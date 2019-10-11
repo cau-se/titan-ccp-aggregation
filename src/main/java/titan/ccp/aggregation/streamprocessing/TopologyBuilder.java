@@ -33,7 +33,10 @@ import titan.ccp.models.records.AggregatedActivePowerRecordFactory;
  */
 public class TopologyBuilder {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(TopologyBuilder.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(TopologyBuilder.class); // NOPMD
+                                                                                       // unused
+                                                                                       // private
+                                                                                       // fields
 
   private final String inputTopic;
   private final String outputTopic;
