@@ -1,0 +1,98 @@
+image: openjdk:11-jdk
+
+# Disable the Gradle daemon for Continuous Integration servers as correctness
+# is usually a priority over speed in CI environments. Using a fresh
+# runtime for each build is more reliable since the runtime is completely
+# isolated from any previous builds.
+variables:
+  GRADLE_OPTS: "-Dorg.gradle.daemon=false"
+
+cache:
+  paths:
+    - .gradle
+
+before_script:
+  - export GRADLE_USER_HOME=`pwd`/.gradle
+
+stages:
+  - build
+  - test
+  - check
+  - deploy
+
+build:
+  stage: build
+  tags:
+    - dockerex
+  script: ./gradlew --build-cache assemble
+  artifacts:
+    paths:
+      - build/libs/*.jar
+      - build/distributions/*.tar
+      - record-counter/build/libs/*.jar
+      - record-counter/build/distributions/*.tar
+    expire_in: 1 day
+
+test:
+  stage: test
+  tags:
+    - dockerex
+  script: ./gradlew test
+
+checkstyle:
+  stage: check
+  tags:
+    - dockerex
+  script: ./gradlew checkstyle
+  
+pmd:
+  stage: check
+  tags:
+    - dockerex
+  script: ./gradlew pmd
+  
+spotbugs:
+  stage: check
+  tags:
+    - dockerex
+  script: ./gradlew spotbugs
+
+deploy:
+  stage: deploy
+  tags:
+    - dockerex
+  image: docker:latest
+  services:
+    - docker:dind
+  script:
+    - DOCKER_TAG_NAME=$(echo $CI_COMMIT_REF_SLUG- | sed 's/^master-$//')
+    - docker build --pull -t titan-ccp-history .
+    - docker tag titan-ccp-history industrialdevops/titan-ccp-history:${DOCKER_TAG_NAME}latest
+    - docker tag titan-ccp-history industrialdevops/titan-ccp-history:$DOCKER_TAG_NAME$(date +%Y%m%d%H%M%S)
+    - docker tag titan-ccp-history industrialdevops/titan-ccp-history:$DOCKER_TAG_NAME$CI_COMMIT_SHA
+    - echo $DOCKERHUB_PW | docker login -u $DOCKERHUB_ID --password-stdin
+    - docker push industrialdevops/titan-ccp-history
+  only:
+    variables:
+      - $DOCKERHUB_ID
+      - $DOCKERHUB_PW
+
+deploy-record-tester:
+  stage: deploy
+  tags:
+    - dockerex
+  image: docker:latest
+  services:
+    - docker:dind
+  script:
+    - DOCKER_TAG_NAME=$(echo $CI_COMMIT_REF_SLUG- | sed 's/^master-$//')
+    - docker build --pull -t titan-ccp-record-counter ./record-counter
+    - docker tag titan-ccp-record-counter industrialdevops/titan-ccp-record-counter:${DOCKER_TAG_NAME}latest
+    - docker tag titan-ccp-record-counter industrialdevops/titan-ccp-record-counter:$DOCKER_TAG_NAME$(date +%Y%m%d%H%M%S)
+    - docker tag titan-ccp-record-counter industrialdevops/titan-ccp-record-counter:$DOCKER_TAG_NAME$CI_COMMIT_SHA
+    - echo $DOCKERHUB_PW | docker login -u $DOCKERHUB_ID --password-stdin
+    - docker push industrialdevops/titan-ccp-record-counter
+  only:
+    variables:
+      - $DOCKERHUB_ID
+      - $DOCKERHUB_PW
