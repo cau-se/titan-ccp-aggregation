@@ -11,8 +11,6 @@ import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.KTable;
 import org.apache.kafka.streams.kstream.Materialized;
 import org.apache.kafka.streams.kstream.Produced;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import titan.ccp.common.kieker.kafka.IMonitoringRecordSerde;
 import titan.ccp.configuration.events.Event;
 import titan.ccp.configuration.events.EventSerde;
@@ -33,10 +31,7 @@ import titan.ccp.models.records.AggregatedActivePowerRecordFactory;
  */
 public class TopologyBuilder {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(TopologyBuilder.class); // NOPMD
-                                                                                       // unused
-                                                                                       // private
-                                                                                       // fields
+  // private static final Logger LOGGER = LoggerFactory.getLogger(TopologyBuilder.class);
 
   private final String inputTopic;
   private final String outputTopic;
