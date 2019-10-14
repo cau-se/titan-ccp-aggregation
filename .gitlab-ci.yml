@@ -29,8 +29,6 @@ build:
     paths:
       - build/libs/*.jar
       - build/distributions/*.tar
-      - record-counter/build/libs/*.jar
-      - record-counter/build/distributions/*.tar
     expire_in: 1 day
 
 test:
@@ -66,32 +64,12 @@ deploy:
     - docker:dind
   script:
     - DOCKER_TAG_NAME=$(echo $CI_COMMIT_REF_SLUG- | sed 's/^master-$//')
-    - docker build --pull -t titan-ccp-history .
-    - docker tag titan-ccp-history industrialdevops/titan-ccp-history:${DOCKER_TAG_NAME}latest
-    - docker tag titan-ccp-history industrialdevops/titan-ccp-history:$DOCKER_TAG_NAME$(date +%Y%m%d%H%M%S)
-    - docker tag titan-ccp-history industrialdevops/titan-ccp-history:$DOCKER_TAG_NAME$CI_COMMIT_SHA
+    - docker build --pull -t titan-ccp-aggregation .
+    - docker tag titan-ccp-aggregation industrialdevops/titan-ccp-aggregation:${DOCKER_TAG_NAME}latest
+    - docker tag titan-ccp-aggregation industrialdevops/titan-ccp-aggregation:$DOCKER_TAG_NAME$(date +%Y%m%d%H%M%S)
+    - docker tag titan-ccp-aggregation industrialdevops/titan-ccp-aggregation:$DOCKER_TAG_NAME$CI_COMMIT_SHA
     - echo $DOCKERHUB_PW | docker login -u $DOCKERHUB_ID --password-stdin
-    - docker push industrialdevops/titan-ccp-history
-  only:
-    variables:
-      - $DOCKERHUB_ID
-      - $DOCKERHUB_PW
-
-deploy-record-tester:
-  stage: deploy
-  tags:
-    - dockerex
-  image: docker:latest
-  services:
-    - docker:dind
-  script:
-    - DOCKER_TAG_NAME=$(echo $CI_COMMIT_REF_SLUG- | sed 's/^master-$//')
-    - docker build --pull -t titan-ccp-record-counter ./record-counter
-    - docker tag titan-ccp-record-counter industrialdevops/titan-ccp-record-counter:${DOCKER_TAG_NAME}latest
-    - docker tag titan-ccp-record-counter industrialdevops/titan-ccp-record-counter:$DOCKER_TAG_NAME$(date +%Y%m%d%H%M%S)
-    - docker tag titan-ccp-record-counter industrialdevops/titan-ccp-record-counter:$DOCKER_TAG_NAME$CI_COMMIT_SHA
-    - echo $DOCKERHUB_PW | docker login -u $DOCKERHUB_ID --password-stdin
-    - docker push industrialdevops/titan-ccp-record-counter
+    - docker push industrialdevops/titan-ccp-aggregation
   only:
     variables:
       - $DOCKERHUB_ID
