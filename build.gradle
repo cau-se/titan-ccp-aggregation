@@ -50,7 +50,7 @@ dependencies {
     testCompile 'com.github.stefanbirkner:system-rules:1.17.0'
 }
 
-mainClassName = "titan.ccp.history.HistoryService"
+mainClassName = "titan.ccp.aggregation.AggregationService"
 
 pmd {
   ruleSets = [] // Gradle requires to clean the rule sets first
