@@ -22,12 +22,6 @@ import titan.ccp.models.records.AggregatedActivePowerRecordFactory;
 
 /**
  * Builds Kafka Stream Topology for the History microservice.
- *
- * <p>
- * The History microservice is going to be divided into a History and an Aggregation component
- * (later microservice). After the restructuring, this class constructs the topology for the
- * Aggregation whereas the Cassandra storing parts are going to be moved to a dedicated builder.
- * </p>
  */
 public class TopologyBuilder {
 
