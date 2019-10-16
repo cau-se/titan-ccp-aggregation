@@ -70,10 +70,25 @@ public class TopologyBuilder {
   }
 
   private KTable<String, ActivePowerRecord> buildInputTable() {
-    return this.builder
-        .table(this.inputTopic, Consumed.with(
+    final KStream<String, ActivePowerRecord> values = this.builder
+        .stream(this.inputTopic, Consumed.with(
             Serdes.String(),
             IMonitoringRecordSerde.serde(new ActivePowerRecordFactory())));
+    final KStream<String, ActivePowerRecord> aggregationsInput = this.builder
+        .stream(this.outputTopic, Consumed.with(
+            Serdes.String(),
+            IMonitoringRecordSerde.serde(new AggregatedActivePowerRecordFactory())))
+        .mapValues(r -> new ActivePowerRecord(r.getIdentifier(), r.getTimestamp(), r.getSumInW()));
+
+    final KTable<String, ActivePowerRecord> inputTable = values
+        .merge(aggregationsInput)
+        // .peek((k, record) -> LOGGER.info("Received input {}",
+        // this.buildActivePowerRecordString(record)))
+        .groupByKey(Grouped.with(Serdes.String(),
+            IMonitoringRecordSerde.serde(new ActivePowerRecordFactory())))
+        .reduce((aggr, value) -> value, Materialized.with(Serdes.String(),
+            IMonitoringRecordSerde.serde(new ActivePowerRecordFactory())));
+    return inputTable;
   }
 
   private KTable<String, Set<String>> buildParentSensorTable() {

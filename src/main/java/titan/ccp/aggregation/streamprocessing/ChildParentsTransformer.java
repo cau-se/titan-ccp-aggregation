@@ -4,12 +4,14 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.kstream.Transformer;
 import org.apache.kafka.streams.processor.ProcessorContext;
 import org.apache.kafka.streams.state.KeyValueIterator;
 import org.apache.kafka.streams.state.KeyValueStore;
 import titan.ccp.configuration.events.Event;
+import titan.ccp.model.sensorregistry.AggregatedSensor;
 import titan.ccp.model.sensorregistry.Sensor;
 import titan.ccp.model.sensorregistry.SensorRegistry;
 
@@ -62,15 +64,20 @@ public class ChildParentsTransformer implements
   }
 
   private Map<String, Set<String>> constructChildParentsPairs(final SensorRegistry registry) {
-    return registry
-        .getMachineSensors()
-        .stream()
+    return this.streamAllChildren(registry.getTopLevelSensor())
         .collect(Collectors.toMap(
             child -> child.getIdentifier(),
-            child -> child.getParents()
-                .stream()
-                .map(Sensor::getIdentifier)
-                .collect(Collectors.toSet())));
+            child -> child.getParent()
+                .map(p -> Set.of(p.getIdentifier()))
+                .orElseGet(() -> Set.of())));
+  }
+
+  private Stream<Sensor> streamAllChildren(final AggregatedSensor sensor) {
+    return sensor.getChildren().stream()
+        .flatMap(s -> Stream.concat(
+            Stream.of(s),
+            s instanceof AggregatedSensor ? this.streamAllChildren((AggregatedSensor) s)
+                : Stream.empty()));
   }
 
   private void updateChildParentsPairs(final Map<String, Set<String>> childParentsPairs) {
