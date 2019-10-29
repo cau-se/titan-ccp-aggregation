@@ -1,11 +1,11 @@
-# Titan CCP - Aggregation
+# Titan Control Center - Aggregation
 
-The [Titan Control Center Prototype](https://ieeexplore.ieee.org/abstract/document/8822045)
-(CCP) is a scalable monitoring infrastructure for [Industrial DevOps](https://industrial-devops.org/).
+The [Titan Control Center](https://ieeexplore.ieee.org/abstract/document/8822045)
+is a scalable monitoring infrastructure for [Industrial DevOps](https://industrial-devops.org/).
 It allows to monitor, analyze and visualize the electrical power consumption of
-devices and machines in production environments such as factories.
+devices and machines in industrial production environments.
 
-This repository contains the **Aggregation** microservice of the Titan CCP.
+This repository contains the **Aggregation** microservice of the Titan Control Center.
 
 ## Build and Run
 
