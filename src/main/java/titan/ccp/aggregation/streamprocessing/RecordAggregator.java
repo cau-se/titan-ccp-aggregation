@@ -30,7 +30,7 @@ public class RecordAggregator {
     final double sum = aggregated.getSumInW() - record.getValueInW();
     final double average = count == 0 ? 0.0 : sum / count;
     return new AggregatedActivePowerRecord(
-        // TODO TODO timestamp -1 indicates that this record is emitted by an substract event
+        // TODO timestamp -1 indicates that this record is emitted by an substract event
         identifier, -1,
         0.0, 0.0, count, sum, average);
   }

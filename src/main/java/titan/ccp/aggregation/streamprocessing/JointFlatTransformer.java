@@ -19,7 +19,6 @@ public class JointFlatTransformer implements
     Transformer<String, JointRecordParents, Iterable<KeyValue<SensorParentKey, ActivePowerRecord>>> { // NOCS
 
   private final String stateStoreName;
-
   // private ProcessorContext context;
   private KeyValueStore<String, Set<String>> state;
 

@@ -82,8 +82,6 @@ public class TopologyBuilder {
 
     final KTable<String, ActivePowerRecord> inputTable = values
         .merge(aggregationsInput)
-        // .peek((k, record) -> LOGGER.info("Received input {}",
-        // this.buildActivePowerRecordString(record)))
         .groupByKey(Grouped.with(Serdes.String(),
             IMonitoringRecordSerde.serde(new ActivePowerRecordFactory())))
         .reduce((aggr, value) -> value, Materialized.with(Serdes.String(),
@@ -152,7 +150,7 @@ public class TopologyBuilder {
                 Serdes.String(),
                 IMonitoringRecordSerde.serde(new AggregatedActivePowerRecordFactory())))
         .toStream()
-        // TODO TODO timestamp -1 indicates that this record is emitted by an substract event
+        // TODO timestamp -1 indicates that this record is emitted by an substract event
         .filter((k, record) -> record.getTimestamp() != -1);
   }
 

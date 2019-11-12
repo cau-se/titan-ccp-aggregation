@@ -25,7 +25,6 @@ public class ChildParentsTransformer implements
     Transformer<Event, SensorRegistry, Iterable<KeyValue<String, Optional<Set<String>>>>> {
 
   private final String stateStoreName;
-
   // private ProcessorContext context;
   private KeyValueStore<String, Set<String>> state;
 
