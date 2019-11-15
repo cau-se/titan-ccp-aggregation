@@ -4,6 +4,8 @@ import java.util.Objects;
 import java.util.Properties;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Builder for the Kafka Streams configuration.
@@ -13,7 +15,7 @@ public class KafkaStreamsBuilder {
   private static final String APPLICATION_NAME = "titan-ccp-aggregation";
   private static final String APPLICATION_VERSION = "0.0.1";
 
-  // private static final Logger LOGGER = LoggerFactory.getLogger(KafkaStreamsBuilder.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(KafkaStreamsBuilder.class);
 
   private String bootstrapServers; // NOPMD
   private String inputTopic; // NOPMD
@@ -97,20 +99,15 @@ public class KafkaStreamsBuilder {
   }
 
   private Properties buildProperties() {
-    final Properties properties = new Properties();
-    properties.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, this.bootstrapServers);
-    properties.put(StreamsConfig.APPLICATION_ID_CONFIG,
+    final PropertiesBuilder properties = new PropertiesBuilder();
+    properties.set(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, this.bootstrapServers);
+    properties.set(StreamsConfig.APPLICATION_ID_CONFIG,
         APPLICATION_NAME + '-' + APPLICATION_VERSION); // TODO as parameter
-    if (this.numThreads > 0) {
-      properties.put(StreamsConfig.NUM_STREAM_THREADS_CONFIG, this.numThreads);
-    }
-    if (this.commitIntervalMs >= 0) {
-      properties.put(StreamsConfig.COMMIT_INTERVAL_MS_CONFIG, this.commitIntervalMs);
-    }
-    if (this.cacheMaxBytesBuffering >= 0) {
-      properties.put(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG, this.cacheMaxBytesBuffering);
-    }
-    return properties;
+    properties.set(StreamsConfig.NUM_STREAM_THREADS_CONFIG, this.numThreads, p -> p > 0);
+    properties.set(StreamsConfig.COMMIT_INTERVAL_MS_CONFIG, this.commitIntervalMs, p -> p >= 0);
+    properties.set(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG, this.cacheMaxBytesBuffering,
+        p -> p >= 0);
+    return properties.build();
   }
 
 }
