@@ -4,8 +4,6 @@ import java.util.Objects;
 import java.util.Properties;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsConfig;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Builder for the Kafka Streams configuration.
@@ -15,7 +13,7 @@ public class KafkaStreamsBuilder {
   private static final String APPLICATION_NAME = "titan-ccp-aggregation";
   private static final String APPLICATION_VERSION = "0.0.1";
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(KafkaStreamsBuilder.class);
+  // private static final Logger LOGGER = LoggerFactory.getLogger(KafkaStreamsBuilder.class);
 
   private String bootstrapServers; // NOPMD
   private String inputTopic; // NOPMD
