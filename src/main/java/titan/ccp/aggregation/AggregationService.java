@@ -17,7 +17,6 @@ public class AggregationService {
 
   private final CompletableFuture<Void> stopEvent = new CompletableFuture<>();
 
-
   /**
    * Start the service.
    */
@@ -25,10 +24,12 @@ public class AggregationService {
     this.createKafkaStreamsApplication();
   }
 
-  public static void main(final String[] args) {
-    new AggregationService().run();
+  /**
+   * Stop the service.
+   */
+  public void stop() {
+    this.stopEvent.complete(null);
   }
-
 
   /**
    * Build and start the underlying Kafka Streams Application of the service.
@@ -49,11 +50,8 @@ public class AggregationService {
     kafkaStreams.start();
   }
 
-  /**
-   * Stop the service.
-   */
-  public void stop() {
-    this.stopEvent.complete(null);
+  public static void main(final String[] args) {
+    new AggregationService().run();
   }
 
 }
