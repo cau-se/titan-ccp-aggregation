@@ -4,6 +4,7 @@ import java.util.Objects;
 import java.util.Properties;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsConfig;
+import titan.ccp.common.kafka.streams.PropertiesBuilder;
 
 /**
  * Builder for the Kafka Streams configuration.
@@ -21,7 +22,7 @@ public class KafkaStreamsBuilder {
   private String configurationTopic; // NOPMD
   private int numThreads = -1; // NOPMD
   private int commitIntervalMs = -1; // NOPMD
-  private int cacheMaxBytesBuffering = -1; // NOPMD
+  private int cacheMaxBytesBuff = -1; // NOPMD
 
   public KafkaStreamsBuilder inputTopic(final String inputTopic) {
     this.inputTopic = inputTopic;
@@ -77,7 +78,7 @@ public class KafkaStreamsBuilder {
     if (cacheMaxBytesBuffering < -1) {
       throw new IllegalArgumentException("Cache max bytes buffering must be greater or equal -1.");
     }
-    this.cacheMaxBytesBuffering = cacheMaxBytesBuffering;
+    this.cacheMaxBytesBuff = cacheMaxBytesBuffering;
     return this;
   }
 
@@ -93,19 +94,14 @@ public class KafkaStreamsBuilder {
         this.inputTopic,
         this.outputTopic,
         this.configurationTopic);
-    return new KafkaStreams(topologyBuilder.build(), this.buildProperties());
-  }
-
-  private Properties buildProperties() {
-    final PropertiesBuilder properties = new PropertiesBuilder();
-    properties.set(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, this.bootstrapServers);
-    properties.set(StreamsConfig.APPLICATION_ID_CONFIG,
-        APPLICATION_NAME + '-' + APPLICATION_VERSION); // TODO as parameter
-    properties.set(StreamsConfig.NUM_STREAM_THREADS_CONFIG, this.numThreads, p -> p > 0);
-    properties.set(StreamsConfig.COMMIT_INTERVAL_MS_CONFIG, this.commitIntervalMs, p -> p >= 0);
-    properties.set(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG, this.cacheMaxBytesBuffering,
-        p -> p >= 0);
-    return properties.build();
+    final Properties properties = PropertiesBuilder
+        .bootstrapServers(this.bootstrapServers)
+        .applicationId(APPLICATION_NAME + '-' + APPLICATION_VERSION) // TODO as parameter
+        .set(StreamsConfig.NUM_STREAM_THREADS_CONFIG, this.numThreads, p -> p > 0)
+        .set(StreamsConfig.COMMIT_INTERVAL_MS_CONFIG, this.commitIntervalMs, p -> p >= 0)
+        .set(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG, this.cacheMaxBytesBuff, p -> p >= 0)
+        .build();
+    return new KafkaStreams(topologyBuilder.build(), properties);
   }
 
 }
