@@ -41,6 +41,9 @@ dependencies {
     // Use JUnit test framework
     testCompile 'junit:junit:4.12'
     testCompile 'com.github.stefanbirkner:system-rules:1.17.0'
+    
+    //TODO Temporary
+    compile 'org.apache.avro:avro:1.9.1'
 }
 
 mainClassName = "titan.ccp.aggregation.AggregationService"
