@@ -29,6 +29,10 @@ allprojects {
 	    maven {
 	    	url "https://oss.sonatype.org/content/repositories/snapshots/"
 	    }
+	    
+	    maven {
+	      url 'https://packages.confluent.io/maven/'
+	    }
 	}
 }
 
@@ -44,6 +48,7 @@ dependencies {
     
     //TODO Temporary
     compile 'org.apache.avro:avro:1.9.1'
+    compile 'io.confluent:kafka-streams-avro-serde:5.3.1'
 }
 
 mainClassName = "titan.ccp.aggregation.AggregationService"
