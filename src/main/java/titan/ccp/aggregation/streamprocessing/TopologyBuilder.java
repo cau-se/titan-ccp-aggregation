@@ -1,7 +1,7 @@
 package titan.ccp.aggregation.streamprocessing;
 
+import java.time.Instant;
 import java.util.Set;
-import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.Topology;
@@ -14,6 +14,7 @@ import org.apache.kafka.streams.kstream.Produced;
 import titan.ccp.common.kieker.kafka.IMonitoringRecordSerde;
 import titan.ccp.configuration.events.Event;
 import titan.ccp.configuration.events.EventSerde;
+import titan.ccp.model.records.AggregatedActivePowerRecordAvro;
 import titan.ccp.model.sensorregistry.SensorRegistry;
 import titan.ccp.models.records.ActivePowerRecord;
 import titan.ccp.models.records.ActivePowerRecordFactory;
@@ -25,8 +26,10 @@ import titan.ccp.models.records.AggregatedActivePowerRecordFactory;
  */
 public class TopologyBuilder {
 
-  // private static final Logger LOGGER = LoggerFactory.getLogger(TopologyBuilder.class);
+  // private static final Logger LOGGER =
+  // LoggerFactory.getLogger(TopologyBuilder.class);
 
+  private final Serdes serdes;
   private final String inputTopic;
   private final String outputTopic;
   private final String configurationTopic;
@@ -34,12 +37,14 @@ public class TopologyBuilder {
   private final StreamsBuilder builder = new StreamsBuilder();
   private final RecordAggregator recordAggregator = new RecordAggregator();
 
-
   /**
    * Create a new {@link TopologyBuilder} using the given topics.
+   *
+   * @param serdes
    */
-  public TopologyBuilder(final String inputTopic, final String outputTopic,
+  public TopologyBuilder(final Serdes serdes, final String inputTopic, final String outputTopic,
       final String configurationTopic) {
+    this.serdes = serdes;
     this.inputTopic = inputTopic;
     this.outputTopic = outputTopic;
     this.configurationTopic = configurationTopic;
@@ -66,19 +71,20 @@ public class TopologyBuilder {
     // 5. Expose Aggregations Stream
     this.exposeOutputStream(aggregations);
 
+    // Second stream with avros
+    this.exposeOutputStreamAvro(aggregations);
+
     return this.builder.build();
   }
 
   private KTable<String, ActivePowerRecord> buildInputTable() {
-    return this.builder
-        .table(this.inputTopic, Consumed.with(
-            Serdes.String(),
-            IMonitoringRecordSerde.serde(new ActivePowerRecordFactory())));
+    return this.builder.table(this.inputTopic, Consumed.with(this.serdes.string(),
+        IMonitoringRecordSerde.serde(new ActivePowerRecordFactory())));
   }
 
   private KTable<String, Set<String>> buildParentSensorTable() {
     final KStream<Event, String> configurationStream = this.builder
-        .stream(this.configurationTopic, Consumed.with(EventSerde.serde(), Serdes.String()))
+        .stream(this.configurationTopic, Consumed.with(EventSerde.serde(), this.serdes.string()))
         .filter((key, value) -> key == Event.SENSOR_REGISTRY_CHANGED
             || key == Event.SENSOR_REGISTRY_STATUS);
 
@@ -86,18 +92,13 @@ public class TopologyBuilder {
         new ChildParentsTransformerFactory();
     this.builder.addStateStore(childParentsTransformerFactory.getStoreBuilder());
 
-    return configurationStream
-        .mapValues(data -> SensorRegistry.fromJson(data))
-        .flatTransform(
-            childParentsTransformerFactory.getTransformerSupplier(),
+    return configurationStream.mapValues(data -> SensorRegistry.fromJson(data))
+        .flatTransform(childParentsTransformerFactory.getTransformerSupplier(),
             childParentsTransformerFactory.getStoreName())
-        .groupByKey(Grouped.with(Serdes.String(), OptionalParentsSerde.serde()))
-        .aggregate(
-            () -> Set.<String>of(),
-            (key, newValue, oldValue) -> newValue.orElse(null),
-            Materialized.with(Serdes.String(), ParentsSerde.serde()));
+        .groupByKey(Grouped.with(this.serdes.string(), OptionalParentsSerde.serde()))
+        .aggregate(() -> Set.<String>of(), (key, newValue, oldValue) -> newValue.orElse(null),
+            Materialized.with(this.serdes.string(), ParentsSerde.serde()));
   }
-
 
   private KTable<SensorParentKey, ActivePowerRecord> buildLastValueTable(
       final KTable<String, Set<String>> parentSensorTable,
@@ -109,41 +110,49 @@ public class TopologyBuilder {
     return inputTable
         .join(parentSensorTable, (record, parents) -> new JointRecordParents(parents, record))
         .toStream()
-        .flatTransform(
-            jointFlatMapTransformerFactory.getTransformerSupplier(),
+        .flatTransform(jointFlatMapTransformerFactory.getTransformerSupplier(),
             jointFlatMapTransformerFactory.getStoreName())
-        .groupByKey(Grouped.with(
-            SensorParentKeySerde.serde(),
+        .groupByKey(Grouped.with(SensorParentKeySerde.serde(),
             IMonitoringRecordSerde.serde(new ActivePowerRecordFactory())))
         .reduce(
             // TODO Also deduplicate here?
-            (aggValue, newValue) -> newValue,
-            Materialized.with(
-                SensorParentKeySerde.serde(),
+            (aggValue, newValue) -> newValue, Materialized.with(SensorParentKeySerde.serde(),
                 IMonitoringRecordSerde.serde(new ActivePowerRecordFactory())));
   }
 
   private KStream<String, AggregatedActivePowerRecord> buildAggregationStream(
       final KTable<SensorParentKey, ActivePowerRecord> lastValueTable) {
     return lastValueTable
-        .groupBy(
-            (k, v) -> KeyValue.pair(k.getParent(), v),
-            Grouped.with(
-                Serdes.String(),
+        .groupBy((k, v) -> KeyValue.pair(k.getParent(), v),
+            Grouped.with(this.serdes.string(),
                 IMonitoringRecordSerde.serde(new ActivePowerRecordFactory())))
-        .aggregate(
-            () -> null, this.recordAggregator::add, this.recordAggregator::substract,
-            Materialized.with(
-                Serdes.String(),
+        .aggregate(() -> null, this.recordAggregator::add, this.recordAggregator::substract,
+            Materialized.with(this.serdes.string(),
                 IMonitoringRecordSerde.serde(new AggregatedActivePowerRecordFactory())))
         .toStream()
-        // TODO TODO timestamp -1 indicates that this record is emitted by an substract event
+        // TODO TODO timestamp -1 indicates that this record is emitted by an substract
+        // event
         .filter((k, record) -> record.getTimestamp() != -1);
   }
 
   private void exposeOutputStream(final KStream<String, AggregatedActivePowerRecord> aggregations) {
-    aggregations.to(this.outputTopic, Produced.with(
-        Serdes.String(),
+    aggregations.to(this.outputTopic, Produced.with(this.serdes.string(),
         IMonitoringRecordSerde.serde(new AggregatedActivePowerRecordFactory())));
+  }
+
+  private void exposeOutputStreamAvro(
+      final KStream<String, AggregatedActivePowerRecord> aggregations) {
+    aggregations.mapValues((final AggregatedActivePowerRecord aaprKieker) -> {
+      final AggregatedActivePowerRecordAvro aaprAvro = new AggregatedActivePowerRecordAvro();
+      aaprAvro.setIdentifier(aaprKieker.getIdentifier());
+      aaprAvro.setTimestamp(Instant.ofEpochMilli(aaprKieker.getTimestamp()));
+      aaprAvro.setMinInW(aaprKieker.getMinInW());
+      aaprAvro.setMaxInW(aaprKieker.getMaxInW());
+      aaprAvro.setCount(aaprKieker.getCount());
+      aaprAvro.setSumInW(aaprKieker.getSumInW());
+      aaprAvro.setAverageInW(aaprKieker.getAverageInW());
+      return aaprAvro;
+    }).to(this.outputTopic + "-avro",
+        Produced.with(this.serdes.string(), this.serdes.aggregatedActivePowerRecordAvroValues()));
   }
 }

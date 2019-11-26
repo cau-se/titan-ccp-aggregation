@@ -42,6 +42,7 @@ public class AggregationService {
         .inputTopic(this.config.getString(ConfigurationKeys.KAFKA_INPUT_TOPIC))
         .outputTopic(this.config.getString(ConfigurationKeys.KAFKA_OUTPUT_TOPIC))
         .configurationTopic(this.config.getString(ConfigurationKeys.CONFIGURATION_KAFKA_TOPIC))
+        .schemaRegistry(this.config.getString(ConfigurationKeys.SCHEMA_REGISTRY_URL))
         .numThreads(this.config.getInt(ConfigurationKeys.NUM_THREADS))
         .commitIntervalMs(this.config.getInt(ConfigurationKeys.COMMIT_INTERVAL_MS))
         .cacheMaxBytesBuffering(this.config.getInt(ConfigurationKeys.CACHE_MAX_BYTES_BUFFERING))
