@@ -14,7 +14,7 @@ import org.apache.kafka.streams.kstream.Produced;
 import titan.ccp.common.kieker.kafka.IMonitoringRecordSerde;
 import titan.ccp.configuration.events.Event;
 import titan.ccp.configuration.events.EventSerde;
-import titan.ccp.model.records.AggregatedActivePowerRecordAvro;
+import titan.ccp.model.records.AggregatedActivePowerRecord.Builder;
 import titan.ccp.model.sensorregistry.SensorRegistry;
 import titan.ccp.models.records.ActivePowerRecord;
 import titan.ccp.models.records.ActivePowerRecordFactory;
@@ -143,14 +143,14 @@ public class TopologyBuilder {
   private void exposeOutputStreamAvro(
       final KStream<String, AggregatedActivePowerRecord> aggregations) {
     aggregations.mapValues((final AggregatedActivePowerRecord aaprKieker) -> {
-      final AggregatedActivePowerRecordAvro aaprAvro = new AggregatedActivePowerRecordAvro();
-      aaprAvro.setIdentifier(aaprKieker.getIdentifier());
-      aaprAvro.setTimestamp(Instant.ofEpochMilli(aaprKieker.getTimestamp()));
-      aaprAvro.setMinInW(aaprKieker.getMinInW());
-      aaprAvro.setMaxInW(aaprKieker.getMaxInW());
-      aaprAvro.setCount(aaprKieker.getCount());
-      aaprAvro.setSumInW(aaprKieker.getSumInW());
-      aaprAvro.setAverageInW(aaprKieker.getAverageInW());
+      final Builder aggRecBuilder =
+          titan.ccp.model.records.AggregatedActivePowerRecord.newBuilder();
+      final titan.ccp.model.records.AggregatedActivePowerRecord aaprAvro =
+          aggRecBuilder.setIdentifier(aaprKieker.getIdentifier())
+              .setTimestamp(Instant.ofEpochMilli(aaprKieker.getTimestamp()))
+              .setMinInW(aaprKieker.getMinInW()).setMaxInW(aaprKieker.getMaxInW())
+              .setCount(aaprKieker.getCount()).setSumInW(aaprKieker.getSumInW())
+              .setAverageInW(aaprKieker.getAverageInW()).build();
       return aaprAvro;
     }).to(this.outputTopic + "-avro",
         Produced.with(this.serdes.string(), this.serdes.aggregatedActivePowerRecordAvroValues()));

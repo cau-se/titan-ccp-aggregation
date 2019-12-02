@@ -2,7 +2,7 @@ package titan.ccp.aggregation.streamprocessing;
 
 import org.apache.kafka.common.serialization.Serde;
 import titan.ccp.avro.SchemaRegistryAvroSerdeFactory;
-import titan.ccp.model.records.AggregatedActivePowerRecordAvro;
+import titan.ccp.model.records.AggregatedActivePowerRecord;
 
 public class Serdes {
 
@@ -16,7 +16,7 @@ public class Serdes {
     return org.apache.kafka.common.serialization.Serdes.String();
   }
 
-  public Serde<AggregatedActivePowerRecordAvro> aggregatedActivePowerRecordAvroValues() {
+  public Serde<AggregatedActivePowerRecord> aggregatedActivePowerRecordAvroValues() {
     return this.avroSerdeFactory.forKeys();
   }
 }
