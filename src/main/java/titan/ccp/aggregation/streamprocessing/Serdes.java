@@ -1,7 +1,7 @@
 package titan.ccp.aggregation.streamprocessing;
 
 import org.apache.kafka.common.serialization.Serde;
-import titan.ccp.avro.SchemaRegistryAvroSerdeFactory;
+import titan.ccp.common.avro.SchemaRegistryAvroSerdeFactory;
 import titan.ccp.model.records.AggregatedActivePowerRecord;
 
 public class Serdes {
