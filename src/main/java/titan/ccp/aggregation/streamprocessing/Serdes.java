@@ -17,6 +17,6 @@ public class Serdes {
   }
 
   public Serde<AggregatedActivePowerRecord> aggregatedActivePowerRecordAvroValues() {
-    return this.avroSerdeFactory.forKeys();
+    return this.avroSerdeFactory.forValues();
   }
 }
