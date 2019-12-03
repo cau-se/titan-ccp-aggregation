@@ -1,6 +1,5 @@
 package titan.ccp.aggregation.streamprocessing;
 
-import java.time.Instant;
 import java.util.Set;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StreamsBuilder;
@@ -147,10 +146,9 @@ public class TopologyBuilder {
           titan.ccp.model.records.AggregatedActivePowerRecord.newBuilder();
       final titan.ccp.model.records.AggregatedActivePowerRecord aaprAvro =
           aggRecBuilder.setIdentifier(aaprKieker.getIdentifier())
-              .setTimestamp(Instant.ofEpochMilli(aaprKieker.getTimestamp()))
-              .setMinInW(aaprKieker.getMinInW()).setMaxInW(aaprKieker.getMaxInW())
-              .setCount(aaprKieker.getCount()).setSumInW(aaprKieker.getSumInW())
-              .setAverageInW(aaprKieker.getAverageInW()).build();
+              .setTimestamp(aaprKieker.getTimestamp()).setMinInW(aaprKieker.getMinInW())
+              .setMaxInW(aaprKieker.getMaxInW()).setCount(aaprKieker.getCount())
+              .setSumInW(aaprKieker.getSumInW()).setAverageInW(aaprKieker.getAverageInW()).build();
       return aaprAvro;
     }).to(this.outputTopic + "-avro",
         Produced.with(this.serdes.string(), this.serdes.aggregatedActivePowerRecordAvroValues()));
