@@ -70,9 +70,6 @@ public class TopologyBuilder {
     // 5. Expose Aggregations Stream
     this.exposeOutputStream(aggregations);
 
-    // Second stream with avros
-    this.exposeOutputStreamAvro(aggregations);
-
     return this.builder.build();
   }
 
@@ -135,22 +132,16 @@ public class TopologyBuilder {
   }
 
   private void exposeOutputStream(final KStream<String, AggregatedActivePowerRecord> aggregations) {
-    aggregations.to(this.outputTopic, Produced.with(this.serdes.string(),
-        IMonitoringRecordSerde.serde(new AggregatedActivePowerRecordFactory())));
-  }
-
-  private void exposeOutputStreamAvro(
-      final KStream<String, AggregatedActivePowerRecord> aggregations) {
-    aggregations.mapValues((final AggregatedActivePowerRecord aaprKieker) -> {
-      final Builder aggRecBuilder =
+    aggregations.mapValues((final AggregatedActivePowerRecord aggrKieker) -> {
+      final Builder aggrAvroBuilder =
           titan.ccp.model.records.AggregatedActivePowerRecord.newBuilder();
-      final titan.ccp.model.records.AggregatedActivePowerRecord aaprAvro =
-          aggRecBuilder.setIdentifier(aaprKieker.getIdentifier())
-              .setTimestamp(aaprKieker.getTimestamp()).setMinInW(aaprKieker.getMinInW())
-              .setMaxInW(aaprKieker.getMaxInW()).setCount(aaprKieker.getCount())
-              .setSumInW(aaprKieker.getSumInW()).setAverageInW(aaprKieker.getAverageInW()).build();
-      return aaprAvro;
-    }).to(this.outputTopic + "-avro",
-        Produced.with(this.serdes.string(), this.serdes.aggregatedActivePowerRecordAvroValues()));
+      final titan.ccp.model.records.AggregatedActivePowerRecord aggrAvro =
+          aggrAvroBuilder.setIdentifier(aggrKieker.getIdentifier())
+              .setTimestamp(aggrKieker.getTimestamp()).setMinInW(aggrKieker.getMinInW())
+              .setMaxInW(aggrKieker.getMaxInW()).setCount(aggrKieker.getCount())
+              .setSumInW(aggrKieker.getSumInW()).setAverageInW(aggrKieker.getAverageInW()).build();
+      return aggrAvro;
+    }).to(this.outputTopic,
+        Produced.with(this.serdes.string(), this.serdes.aggregatedActivePowerRecordValues()));
   }
 }

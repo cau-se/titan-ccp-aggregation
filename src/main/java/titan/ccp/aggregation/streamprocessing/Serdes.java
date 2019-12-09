@@ -16,7 +16,7 @@ public class Serdes {
     return org.apache.kafka.common.serialization.Serdes.String();
   }
 
-  public Serde<AggregatedActivePowerRecord> aggregatedActivePowerRecordAvroValues() {
+  public Serde<AggregatedActivePowerRecord> aggregatedActivePowerRecordValues() {
     return this.avroSerdeFactory.forValues();
   }
 }
