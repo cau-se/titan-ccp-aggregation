@@ -1,6 +1,5 @@
 package titan.ccp.aggregation.streamprocessing;
 
-import java.util.Arrays;
 import java.util.Set;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StreamsBuilder;
@@ -9,13 +8,11 @@ import org.apache.kafka.streams.kstream.Consumed;
 import org.apache.kafka.streams.kstream.Grouped;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.KTable;
-import org.apache.kafka.streams.kstream.KeyValueMapper;
 import org.apache.kafka.streams.kstream.Materialized;
 import org.apache.kafka.streams.kstream.Produced;
 import titan.ccp.common.kieker.kafka.IMonitoringRecordSerde;
 import titan.ccp.configuration.events.Event;
 import titan.ccp.configuration.events.EventSerde;
-import titan.ccp.model.records.ActivePowerRecordKey;
 import titan.ccp.model.records.AggregatedActivePowerRecord.Builder;
 import titan.ccp.model.sensorregistry.SensorRegistry;
 import titan.ccp.models.records.ActivePowerRecord;
@@ -73,28 +70,6 @@ public class TopologyBuilder {
     // 5. Expose Aggregations Stream
     this.exposeOutputStream(aggregations);
 
-    // logging
-    parentSensorTable.toStream().peek((str, strSet) -> {
-      System.out.println("String: " + str);
-      System.out.println("Set of strings: " + Arrays.toString(strSet.toArray()));
-    });
-
-    inputTable.toStream().peek((str, powerRecord) -> {
-      System.out.println("String: " + str);
-      System.out.println("Identifier: " + powerRecord.getIdentifier());
-      System.out.println("Average in W: " + powerRecord.getValueInW());
-    });
-
-    lastValueTable.toStream().peek((key, powerRecord) -> {
-      System.out.println("Sensor Parent Key: " + key);
-    });
-
-    aggregations.peek((key, aggr) -> {
-      System.out.println("Agg key: " + key);
-      System.out.println("Identifier: " + aggr.getIdentifier());
-      System.out.println("Average in W: " + aggr.getAverageInW());
-    });
-
     return this.builder.build();
   }
 
@@ -103,11 +78,6 @@ public class TopologyBuilder {
         .stream(this.configurationTopic, Consumed.with(EventSerde.serde(), this.serdes.string()))
         .filter((key, value) -> key == Event.SENSOR_REGISTRY_CHANGED
             || key == Event.SENSOR_REGISTRY_STATUS);
-
-    configurationStream.peek((event, string) -> {
-      System.out.println(event);
-      System.out.println(string);
-    });
 
     final ChildParentsTransformerFactory childParentsTransformerFactory =
         new ChildParentsTransformerFactory();
@@ -121,9 +91,13 @@ public class TopologyBuilder {
             Materialized.with(this.serdes.string(), ParentsSerde.serde()));
   }
 
+  /**
+   * Creates a table for the input topic and maps the AVRO {@code ActivePowerRecord} to the Kieker
+   * {@code ActivePowerRecord}.
+   *
+   * @return a table from the input topic
+   */
   private KTable<String, ActivePowerRecord> buildInputTable() {
-    // return this.builder.table(this.inputTopic, Consumed.with(this.serdes.string(),
-    // IMonitoringRecordSerde.serde(new ActivePowerRecordFactory())));
     return this.builder
         .table(this.inputTopic,
             Consumed.with(this.serdes.string(), this.serdes.activePowerRecordValues()))
@@ -131,25 +105,6 @@ public class TopologyBuilder {
           return new ActivePowerRecord(apAvro.getIdentifier(), apAvro.getTimestamp(),
               apAvro.getValueInW());
         });
-  }
-
-  private KTable<String, ActivePowerRecord> buildInputTableKey() {
-    final KeyValueMapper<ActivePowerRecordKey, titan.ccp.model.records.ActivePowerRecord, KeyValue<String, ActivePowerRecord>> selector =
-        (key, apAvro) -> {
-          final ActivePowerRecord apKieker = new ActivePowerRecord(apAvro.getIdentifier(),
-              apAvro.getTimestamp(), apAvro.getValueInW());
-          return new KeyValue<>(key.getKey(), apKieker);
-        };
-
-    final Grouped<String, ActivePowerRecord> grouped = Grouped.with(this.serdes.string(),
-        IMonitoringRecordSerde.serde(new ActivePowerRecordFactory()));
-
-    return this.builder
-        .table(this.inputTopic,
-            Consumed.with(this.serdes.activePowerRecordKeys(),
-                this.serdes.activePowerRecordValues()))
-        .groupBy(selector, grouped)
-        .aggregate(() -> null, (key, value, agg) -> value, (key, value, agg) -> value);
   }
 
   private KTable<SensorParentKey, ActivePowerRecord> buildLastValueTable(
@@ -187,6 +142,12 @@ public class TopologyBuilder {
         .filter((k, record) -> record.getTimestamp() != -1);
   }
 
+  /**
+   * Write the aggreations stream to the output topic. It converts the Kieker
+   * {@code AggregatedActivePowerRecord} to the AVRO {@code AggregatedActivePowerRecord}.
+   *
+   * @param aggregations containing the aggregations of the input data.
+   */
   private void exposeOutputStream(final KStream<String, AggregatedActivePowerRecord> aggregations) {
     aggregations.mapValues((final AggregatedActivePowerRecord aggrKieker) -> {
       final Builder aggrAvroBuilder =
