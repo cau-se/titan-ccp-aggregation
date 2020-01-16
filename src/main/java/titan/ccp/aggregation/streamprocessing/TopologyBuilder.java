@@ -57,7 +57,6 @@ public class TopologyBuilder {
 
     // 2. Build Input Table
     final KTable<String, ActivePowerRecord> inputTable = this.buildInputTable();
-    // final KTable<String, ActivePowerRecord> inputTable = this.buildInputTableKey();
 
     // 3. Build Last Value Table from Input and Parent-Sensor Table
     final KTable<SensorParentKey, ActivePowerRecord> lastValueTable =
