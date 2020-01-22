@@ -31,14 +31,13 @@ import titan.ccp.models.records.AggregatedActivePowerRecordFactory;
  */
 public class TopologyBuilder {
 
-  private static final Duration WINDOW_SIZE = Duration.ofSeconds(1);
-  private static final Duration GRACE_PERIOD = Duration.ZERO;
-
   // private static final Logger LOGGER = LoggerFactory.getLogger(TopologyBuilder.class);
 
   private final String inputTopic;
   private final String outputTopic;
   private final String configurationTopic;
+  private final Duration windowSize;
+  private final Duration gracePeriod;
 
   private final StreamsBuilder builder = new StreamsBuilder();
   private final RecordAggregator recordAggregator = new RecordAggregator();
@@ -48,10 +47,12 @@ public class TopologyBuilder {
    * Create a new {@link TopologyBuilder} using the given topics.
    */
   public TopologyBuilder(final String inputTopic, final String outputTopic,
-      final String configurationTopic) {
+      final String configurationTopic, final Duration windowSize, final Duration gracePeriod) {
     this.inputTopic = inputTopic;
     this.outputTopic = outputTopic;
     this.configurationTopic = configurationTopic;
+    this.windowSize = windowSize;
+    this.gracePeriod = gracePeriod;
   }
 
   /**
@@ -137,7 +138,7 @@ public class TopologyBuilder {
         .groupByKey(Grouped.with(
             SensorParentKeySerde.serde(),
             IMonitoringRecordSerde.serde(new ActivePowerRecordFactory())))
-        .windowedBy(TimeWindows.of(WINDOW_SIZE).grace(GRACE_PERIOD))
+        .windowedBy(TimeWindows.of(this.windowSize).grace(this.gracePeriod))
         .reduce(
             // TODO Also deduplicate here?
             (aggValue, newValue) -> newValue,
@@ -154,16 +155,16 @@ public class TopologyBuilder {
             Grouped.with(
                 new WindowedSerdes.TimeWindowedSerde<>(
                     Serdes.String(),
-                    WINDOW_SIZE.toMillis()),
+                    this.windowSize.toMillis()),
                 IMonitoringRecordSerde.serde(new ActivePowerRecordFactory())))
         .aggregate(
             () -> null, this.recordAggregator::add, this.recordAggregator::substract,
             Materialized.with(
                 new WindowedSerdes.TimeWindowedSerde<>(
                     Serdes.String(),
-                    WINDOW_SIZE.toMillis()),
+                    this.windowSize.toMillis()),
                 IMonitoringRecordSerde.serde(new AggregatedActivePowerRecordFactory())))
-        // .suppress(Suppressed.untilTimeLimit(Duration.ofSeconds(1), BufferConfig.unbounded()))
+        // .suppress(Suppressed.untilTimeLimit(this.windowSize, BufferConfig.unbounded()))
         .suppress(Suppressed.untilWindowCloses(BufferConfig.unbounded()))
         .toStream()
         // TODO timestamp -1 indicates that this record is emitted by an substract event

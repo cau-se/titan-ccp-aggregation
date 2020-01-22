@@ -1,5 +1,6 @@
 package titan.ccp.aggregation.streamprocessing;
 
+import java.time.Duration;
 import java.util.Objects;
 import java.util.Properties;
 import org.apache.kafka.streams.KafkaStreams;
@@ -13,12 +14,17 @@ public class KafkaStreamsBuilder {
   private static final String APPLICATION_NAME = "titan-ccp-aggregation";
   private static final String APPLICATION_VERSION = "0.0.1";
 
+  private static final Duration WINDOW_SIZE_DEFAULT = Duration.ofSeconds(1);
+  private static final Duration GRACE_PERIOD_DEFAULT = Duration.ZERO;
+
   // private static final Logger LOGGER = LoggerFactory.getLogger(KafkaStreamsBuilder.class);
 
   private String bootstrapServers; // NOPMD
   private String inputTopic; // NOPMD
   private String outputTopic; // NOPMD
   private String configurationTopic; // NOPMD
+  private Duration windowSize = null; // NOPMD
+  private Duration gracePeriod = null; // NOPMD
   private int numThreads = -1; // NOPMD
   private int commitIntervalMs = -1; // NOPMD
   private int cacheMaxBytesBuffering = -1; // NOPMD
@@ -35,6 +41,16 @@ public class KafkaStreamsBuilder {
 
   public KafkaStreamsBuilder configurationTopic(final String configurationTopic) {
     this.configurationTopic = configurationTopic;
+    return this;
+  }
+
+  public KafkaStreamsBuilder windowSize(final Duration windowSize) {
+    this.windowSize = windowSize;
+    return this;
+  }
+
+  public KafkaStreamsBuilder gracePeriod(final Duration gracePeriod) {
+    this.gracePeriod = gracePeriod;
     return this;
   }
 
@@ -92,7 +108,9 @@ public class KafkaStreamsBuilder {
     final TopologyBuilder topologyBuilder = new TopologyBuilder(
         this.inputTopic,
         this.outputTopic,
-        this.configurationTopic);
+        this.configurationTopic,
+        this.windowSize == null ? WINDOW_SIZE_DEFAULT : this.windowSize,
+        this.gracePeriod == null ? GRACE_PERIOD_DEFAULT : this.gracePeriod);
     return new KafkaStreams(topologyBuilder.build(), this.buildProperties());
   }
 
