@@ -1,5 +1,6 @@
 package titan.ccp.aggregation.streamprocessing;
 
+import java.time.Duration;
 import java.util.Set;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KeyValue;
@@ -11,6 +12,11 @@ import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.KTable;
 import org.apache.kafka.streams.kstream.Materialized;
 import org.apache.kafka.streams.kstream.Produced;
+import org.apache.kafka.streams.kstream.Suppressed;
+import org.apache.kafka.streams.kstream.Suppressed.BufferConfig;
+import org.apache.kafka.streams.kstream.TimeWindows;
+import org.apache.kafka.streams.kstream.Windowed;
+import org.apache.kafka.streams.kstream.WindowedSerdes;
 import titan.ccp.common.kieker.kafka.IMonitoringRecordSerde;
 import titan.ccp.configuration.events.Event;
 import titan.ccp.configuration.events.EventSerde;
@@ -24,6 +30,9 @@ import titan.ccp.models.records.AggregatedActivePowerRecordFactory;
  * Builds Kafka Stream Topology for the History microservice.
  */
 public class TopologyBuilder {
+
+  private static final Duration WINDOW_SIZE = Duration.ofSeconds(1);
+  private static final Duration GRACE_PERIOD = Duration.ZERO;
 
   // private static final Logger LOGGER = LoggerFactory.getLogger(TopologyBuilder.class);
 
@@ -56,7 +65,7 @@ public class TopologyBuilder {
     final KTable<String, ActivePowerRecord> inputTable = this.buildInputTable();
 
     // 3. Build Last Value Table from Input and Parent-Sensor Table
-    final KTable<SensorParentKey, ActivePowerRecord> lastValueTable =
+    final KTable<Windowed<SensorParentKey>, ActivePowerRecord> lastValueTable =
         this.buildLastValueTable(parentSensorTable, inputTable);
 
     // 4. Build Aggregations Stream
@@ -112,7 +121,7 @@ public class TopologyBuilder {
   }
 
 
-  private KTable<SensorParentKey, ActivePowerRecord> buildLastValueTable(
+  private KTable<Windowed<SensorParentKey>, ActivePowerRecord> buildLastValueTable(
       final KTable<String, Set<String>> parentSensorTable,
       final KTable<String, ActivePowerRecord> inputTable) {
     final JointFlatTransformerFactory jointFlatMapTransformerFactory =
@@ -128,6 +137,7 @@ public class TopologyBuilder {
         .groupByKey(Grouped.with(
             SensorParentKeySerde.serde(),
             IMonitoringRecordSerde.serde(new ActivePowerRecordFactory())))
+        .windowedBy(TimeWindows.of(WINDOW_SIZE).grace(GRACE_PERIOD))
         .reduce(
             // TODO Also deduplicate here?
             (aggValue, newValue) -> newValue,
@@ -137,21 +147,28 @@ public class TopologyBuilder {
   }
 
   private KStream<String, AggregatedActivePowerRecord> buildAggregationStream(
-      final KTable<SensorParentKey, ActivePowerRecord> lastValueTable) {
+      final KTable<Windowed<SensorParentKey>, ActivePowerRecord> lastValueTable) {
     return lastValueTable
         .groupBy(
-            (k, v) -> KeyValue.pair(k.getParent(), v),
+            (k, v) -> KeyValue.pair(new Windowed<>(k.key().getParent(), k.window()), v),
             Grouped.with(
-                Serdes.String(),
+                new WindowedSerdes.TimeWindowedSerde<>(
+                    Serdes.String(),
+                    WINDOW_SIZE.toMillis()),
                 IMonitoringRecordSerde.serde(new ActivePowerRecordFactory())))
         .aggregate(
             () -> null, this.recordAggregator::add, this.recordAggregator::substract,
             Materialized.with(
-                Serdes.String(),
+                new WindowedSerdes.TimeWindowedSerde<>(
+                    Serdes.String(),
+                    WINDOW_SIZE.toMillis()),
                 IMonitoringRecordSerde.serde(new AggregatedActivePowerRecordFactory())))
+        // .suppress(Suppressed.untilTimeLimit(Duration.ofSeconds(1), BufferConfig.unbounded()))
+        .suppress(Suppressed.untilWindowCloses(BufferConfig.unbounded()))
         .toStream()
         // TODO timestamp -1 indicates that this record is emitted by an substract event
-        .filter((k, record) -> record.getTimestamp() != -1);
+        .filter((k, record) -> record.getTimestamp() != -1)
+        .map((k, v) -> KeyValue.pair(k.key(), v)); // TODO compute Timestamp
   }
 
   private void exposeOutputStream(final KStream<String, AggregatedActivePowerRecord> aggregations) {
