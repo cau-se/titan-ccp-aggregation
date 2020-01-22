@@ -9,7 +9,7 @@ import org.apache.kafka.streams.StreamsConfig;
 /**
  * Builder for the Kafka Streams configuration.
  */
-public class KafkaStreamsBuilder {
+public class KafkaStreamsBuilder { // NOPMD builder method
 
   private static final String APPLICATION_NAME = "titan-ccp-aggregation";
   private static final String APPLICATION_VERSION = "0.0.1";
