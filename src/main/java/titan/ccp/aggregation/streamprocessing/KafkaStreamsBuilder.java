@@ -45,12 +45,12 @@ public class KafkaStreamsBuilder { // NOPMD builder method
   }
 
   public KafkaStreamsBuilder windowSize(final Duration windowSize) {
-    this.windowSize = windowSize;
+    this.windowSize = Objects.requireNonNull(windowSize);
     return this;
   }
 
   public KafkaStreamsBuilder gracePeriod(final Duration gracePeriod) {
-    this.gracePeriod = gracePeriod;
+    this.gracePeriod = Objects.requireNonNull(gracePeriod);
     return this;
   }
 
