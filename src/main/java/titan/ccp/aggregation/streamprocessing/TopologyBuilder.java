@@ -140,11 +140,11 @@ public class TopologyBuilder {
             IMonitoringRecordSerde.serde(new ActivePowerRecordFactory())))
         .windowedBy(TimeWindows.of(this.windowSize).grace(this.gracePeriod))
         .reduce(
-            // TODO Also deduplicate here?
+            // TODO Configurable window aggregation function
             (aggValue, newValue) -> newValue,
-            Materialized.with(
-                SensorParentKeySerde.serde(),
+            Materialized.with(SensorParentKeySerde.serde(),
                 IMonitoringRecordSerde.serde(new ActivePowerRecordFactory())));
+
   }
 
   private KStream<String, AggregatedActivePowerRecord> buildAggregationStream(
@@ -164,8 +164,8 @@ public class TopologyBuilder {
                     Serdes.String(),
                     this.windowSize.toMillis()),
                 IMonitoringRecordSerde.serde(new AggregatedActivePowerRecordFactory())))
-        // .suppress(Suppressed.untilTimeLimit(this.windowSize, BufferConfig.unbounded()))
-        .suppress(Suppressed.untilWindowCloses(BufferConfig.unbounded()))
+        .suppress(Suppressed.untilTimeLimit(this.windowSize, BufferConfig.unbounded()))
+        // .suppress(Suppressed.untilWindowCloses(BufferConfig.unbounded()))
         .toStream()
         // TODO timestamp -1 indicates that this record is emitted by an substract event
         .filter((k, record) -> record.getTimestamp() != -1)
@@ -173,8 +173,9 @@ public class TopologyBuilder {
   }
 
   private void exposeOutputStream(final KStream<String, AggregatedActivePowerRecord> aggregations) {
-    aggregations.to(this.outputTopic, Produced.with(
-        Serdes.String(),
-        IMonitoringRecordSerde.serde(new AggregatedActivePowerRecordFactory())));
+    aggregations
+        .to(this.outputTopic, Produced.with(
+            Serdes.String(),
+            IMonitoringRecordSerde.serde(new AggregatedActivePowerRecordFactory())));
   }
 }
