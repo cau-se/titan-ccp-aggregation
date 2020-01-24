@@ -176,7 +176,7 @@ public class TopologyBuilder {
   }
 
   private StatsAccumulator latencyStats = new StatsAccumulator();
-  private final long lastTime = System.currentTimeMillis();
+  private long lastTime = System.currentTimeMillis();
 
   private void exposeOutputStream(final KStream<String, AggregatedActivePowerRecord> aggregations) {
     aggregations
@@ -187,6 +187,7 @@ public class TopologyBuilder {
           if (time - this.lastTime >= 1000) {
             System.out.println("latency," + this.latencyStats.mean());
             this.latencyStats = new StatsAccumulator();
+            this.lastTime = time;
           }
         })
         .to(this.outputTopic, Produced.with(
