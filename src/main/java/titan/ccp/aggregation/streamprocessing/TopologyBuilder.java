@@ -1,5 +1,6 @@
 package titan.ccp.aggregation.streamprocessing;
 
+import com.google.common.math.StatsAccumulator;
 import java.time.Duration;
 import java.util.Set;
 import org.apache.kafka.common.serialization.Serdes;
@@ -92,6 +93,8 @@ public class TopologyBuilder {
 
     final KTable<String, ActivePowerRecord> inputTable = values
         .merge(aggregationsInput)
+        .mapValues((k, v) -> new ActivePowerRecord(v.getIdentifier(), System.currentTimeMillis(),
+            v.getValueInW()))
         .groupByKey(Grouped.with(Serdes.String(),
             IMonitoringRecordSerde.serde(new ActivePowerRecordFactory())))
         .reduce((aggr, value) -> value, Materialized.with(Serdes.String(),
@@ -172,8 +175,20 @@ public class TopologyBuilder {
         .map((k, v) -> KeyValue.pair(k.key(), v)); // TODO compute Timestamp
   }
 
+  private StatsAccumulator latencyStats = new StatsAccumulator();
+  private final long lastTime = System.currentTimeMillis();
+
   private void exposeOutputStream(final KStream<String, AggregatedActivePowerRecord> aggregations) {
     aggregations
+        .peek((k, v) -> {
+          final long time = System.currentTimeMillis();
+          final long latency = time - v.getTimestamp();
+          this.latencyStats.add(latency);
+          if (time - this.lastTime >= 1000) {
+            System.out.println("latency," + this.latencyStats.mean());
+            this.latencyStats = new StatsAccumulator();
+          }
+        })
         .to(this.outputTopic, Produced.with(
             Serdes.String(),
             IMonitoringRecordSerde.serde(new AggregatedActivePowerRecordFactory())));
