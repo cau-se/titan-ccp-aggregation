@@ -5,6 +5,10 @@ import titan.ccp.common.avro.SchemaRegistryAvroSerdeFactory;
 import titan.ccp.model.records.ActivePowerRecord;
 import titan.ccp.model.records.AggregatedActivePowerRecord;
 
+/**
+ * Class that contains all the needed serializer/deserializer.
+ *
+ */
 public class Serdes {
 
   private final SchemaRegistryAvroSerdeFactory avroSerdeFactory;

@@ -38,7 +38,10 @@ public class TopologyBuilder {
   /**
    * Create a new {@link TopologyBuilder} using the given topics.
    *
-   * @param serdes
+   * @param serdes The serdes to use in the topology.
+   * @param inputTopic The topic where to get the data from.
+   * @param outputTopic The topic where to write the aggregated data.
+   * @param configurationTopic The topic where the hierarchy of the sensors is published.
    */
   public TopologyBuilder(final Serdes serdes, final String inputTopic, final String outputTopic,
       final String configurationTopic) {
@@ -82,11 +85,13 @@ public class TopologyBuilder {
         new ChildParentsTransformerFactory();
     this.builder.addStateStore(childParentsTransformerFactory.getStoreBuilder());
 
-    return configurationStream.mapValues(data -> SensorRegistry.fromJson(data))
+    return configurationStream
+        .mapValues(data -> SensorRegistry.fromJson(data))
         .flatTransform(childParentsTransformerFactory.getTransformerSupplier(),
             childParentsTransformerFactory.getStoreName())
         .groupByKey(Grouped.with(this.serdes.string(), OptionalParentsSerde.serde()))
-        .aggregate(() -> Set.<String>of(), (key, newValue, oldValue) -> newValue.orElse(null),
+        .aggregate(() -> Set.<String>of(),
+            (key, newValue, oldValue) -> newValue.orElse(null),
             Materialized.with(this.serdes.string(), ParentsSerde.serde()));
   }
 
@@ -101,7 +106,9 @@ public class TopologyBuilder {
         .table(this.inputTopic,
             Consumed.with(this.serdes.string(), this.serdes.activePowerRecordValues()))
         .mapValues(apAvro -> {
-          return new ActivePowerRecord(apAvro.getIdentifier(), apAvro.getTimestamp(),
+          return new ActivePowerRecord(
+              apAvro.getIdentifier(),
+              apAvro.getTimestamp(),
               apAvro.getValueInW());
         });
   }
@@ -116,24 +123,32 @@ public class TopologyBuilder {
     return inputTable
         .join(parentSensorTable, (record, parents) -> new JointRecordParents(parents, record))
         .toStream()
-        .flatTransform(jointFlatMapTransformerFactory.getTransformerSupplier(),
+        .flatTransform(
+            jointFlatMapTransformerFactory.getTransformerSupplier(),
             jointFlatMapTransformerFactory.getStoreName())
-        .groupByKey(Grouped.with(SensorParentKeySerde.serde(),
+        .groupByKey(Grouped.with(
+            SensorParentKeySerde.serde(),
             IMonitoringRecordSerde.serde(new ActivePowerRecordFactory())))
         .reduce(
             // TODO Also deduplicate here?
-            (aggValue, newValue) -> newValue, Materialized.with(SensorParentKeySerde.serde(),
+            (aggValue, newValue) -> newValue,
+            Materialized.with(SensorParentKeySerde.serde(),
                 IMonitoringRecordSerde.serde(new ActivePowerRecordFactory())));
   }
 
   private KStream<String, AggregatedActivePowerRecord> buildAggregationStream(
       final KTable<SensorParentKey, ActivePowerRecord> lastValueTable) {
     return lastValueTable
-        .groupBy((k, v) -> KeyValue.pair(k.getParent(), v),
-            Grouped.with(this.serdes.string(),
+        .groupBy(
+            (k, v) -> KeyValue.pair(k.getParent(), v),
+            Grouped.with(
+                this.serdes.string(),
                 IMonitoringRecordSerde.serde(new ActivePowerRecordFactory())))
-        .aggregate(() -> null, this.recordAggregator::add, this.recordAggregator::substract,
-            Materialized.with(this.serdes.string(),
+        .aggregate(
+            () -> null, this.recordAggregator::add,
+            this.recordAggregator::substract,
+            Materialized.with(
+                this.serdes.string(),
                 IMonitoringRecordSerde.serde(new AggregatedActivePowerRecordFactory())))
         .toStream()
         // TODO TODO timestamp -1 indicates that this record is emitted by an substract
@@ -148,16 +163,22 @@ public class TopologyBuilder {
    * @param aggregations containing the aggregations of the input data.
    */
   private void exposeOutputStream(final KStream<String, AggregatedActivePowerRecord> aggregations) {
-    aggregations.mapValues((final AggregatedActivePowerRecord aggrKieker) -> {
-      final Builder aggrAvroBuilder =
-          titan.ccp.model.records.AggregatedActivePowerRecord.newBuilder();
-      final titan.ccp.model.records.AggregatedActivePowerRecord aggrAvro =
-          aggrAvroBuilder.setIdentifier(aggrKieker.getIdentifier())
-              .setTimestamp(aggrKieker.getTimestamp()).setMinInW(aggrKieker.getMinInW())
-              .setMaxInW(aggrKieker.getMaxInW()).setCount(aggrKieker.getCount())
-              .setSumInW(aggrKieker.getSumInW()).setAverageInW(aggrKieker.getAverageInW()).build();
-      return aggrAvro;
-    }).to(this.outputTopic,
-        Produced.with(this.serdes.string(), this.serdes.aggregatedActivePowerRecordValues()));
+    aggregations.mapValues(
+        (final AggregatedActivePowerRecord aggrKieker) -> {
+          final Builder aggrAvroBuilder =
+              titan.ccp.model.records.AggregatedActivePowerRecord.newBuilder();
+          final titan.ccp.model.records.AggregatedActivePowerRecord aggrAvro =
+              aggrAvroBuilder
+                  .setIdentifier(aggrKieker.getIdentifier())
+                  .setTimestamp(aggrKieker.getTimestamp()).setMinInW(aggrKieker.getMinInW())
+                  .setMaxInW(aggrKieker.getMaxInW()).setCount(aggrKieker.getCount())
+                  .setSumInW(aggrKieker.getSumInW()).setAverageInW(aggrKieker.getAverageInW())
+                  .build();
+          return aggrAvro;
+        }).to(
+            this.outputTopic,
+            Produced.with(
+                this.serdes.string(),
+                this.serdes.aggregatedActivePowerRecordValues()));
   }
 }
