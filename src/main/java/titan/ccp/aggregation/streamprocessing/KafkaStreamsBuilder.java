@@ -15,6 +15,7 @@ public class KafkaStreamsBuilder { // NOPMD builder method
   private static final String APPLICATION_VERSION = "0.0.1";
 
   private static final Duration WINDOW_SIZE_DEFAULT = Duration.ofSeconds(1);
+  private static final Duration ADVANCE_PERIOD_DEFAULT = Duration.ZERO;
   private static final Duration GRACE_PERIOD_DEFAULT = Duration.ZERO;
 
   // private static final Logger LOGGER = LoggerFactory.getLogger(KafkaStreamsBuilder.class);
@@ -25,6 +26,7 @@ public class KafkaStreamsBuilder { // NOPMD builder method
   private String configurationTopic; // NOPMD
   private Duration windowSize = null; // NOPMD
   private Duration gracePeriod = null; // NOPMD
+  private Duration advancePeriod = null; // NOPMD
   private int numThreads = -1; // NOPMD
   private int commitIntervalMs = -1; // NOPMD
   private int cacheMaxBytesBuffering = -1; // NOPMD
@@ -46,6 +48,11 @@ public class KafkaStreamsBuilder { // NOPMD builder method
 
   public KafkaStreamsBuilder windowSize(final Duration windowSize) {
     this.windowSize = Objects.requireNonNull(windowSize);
+    return this;
+  }
+
+  public KafkaStreamsBuilder advancePeriod(final Duration advancePeriod) {
+    this.advancePeriod = Objects.requireNonNull(advancePeriod);
     return this;
   }
 
@@ -110,6 +117,7 @@ public class KafkaStreamsBuilder { // NOPMD builder method
         this.outputTopic,
         this.configurationTopic,
         this.windowSize == null ? WINDOW_SIZE_DEFAULT : this.windowSize,
+        this.advancePeriod == null ? ADVANCE_PERIOD_DEFAULT : this.advancePeriod,
         this.gracePeriod == null ? GRACE_PERIOD_DEFAULT : this.gracePeriod);
     return new KafkaStreams(topologyBuilder.build(), this.buildProperties());
   }

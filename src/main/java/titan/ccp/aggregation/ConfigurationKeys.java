@@ -15,6 +15,8 @@ public final class ConfigurationKeys {
 
   public static final String WINDOW_SIZE_MS = "window.size.ms";
 
+  public static final String WINDOW_ADVANCE_MS = "window.advance.ms";
+
   public static final String WINDOW_GRACE_MS = "window.grace.ms";
 
   public static final String NUM_THREADS = "num.threads";

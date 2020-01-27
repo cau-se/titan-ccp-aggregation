@@ -38,6 +38,7 @@ public class TopologyBuilder {
   private final String outputTopic;
   private final String configurationTopic;
   private final Duration windowSize;
+  private final Duration advancePeriod;
   private final Duration gracePeriod;
 
   private final StreamsBuilder builder = new StreamsBuilder();
@@ -48,11 +49,13 @@ public class TopologyBuilder {
    * Create a new {@link TopologyBuilder} using the given topics.
    */
   public TopologyBuilder(final String inputTopic, final String outputTopic,
-      final String configurationTopic, final Duration windowSize, final Duration gracePeriod) {
+      final String configurationTopic, final Duration windowSize, final Duration advancePeriod,
+      final Duration gracePeriod) {
     this.inputTopic = inputTopic;
     this.outputTopic = outputTopic;
     this.configurationTopic = configurationTopic;
     this.windowSize = windowSize;
+    this.advancePeriod = advancePeriod;
     this.gracePeriod = gracePeriod;
   }
 
@@ -141,7 +144,8 @@ public class TopologyBuilder {
         .groupByKey(Grouped.with(
             SensorParentKeySerde.serde(),
             IMonitoringRecordSerde.serde(new ActivePowerRecordFactory())))
-        .windowedBy(TimeWindows.of(this.windowSize).grace(this.gracePeriod))
+        .windowedBy(
+            TimeWindows.of(this.windowSize).advanceBy(this.advancePeriod).grace(this.gracePeriod))
         .reduce(
             // TODO Configurable window aggregation function
             (aggValue, newValue) -> newValue,
