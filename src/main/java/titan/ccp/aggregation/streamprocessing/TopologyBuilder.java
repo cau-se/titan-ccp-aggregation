@@ -185,7 +185,14 @@ public class TopologyBuilder {
           final long latency = time - v.getTimestamp();
           this.latencyStats.add(latency);
           if (time - this.lastTime >= 1000) {
-            System.out.println("latency," + time + ',' + this.latencyStats.mean());
+            System.out.println("latency,"
+                + time + ','
+                + this.latencyStats.mean() + ','
+                + this.latencyStats.populationStandardDeviation() + ','
+                + this.latencyStats.sampleStandardDeviation() + ','
+                + this.latencyStats.min() + ','
+                + this.latencyStats.max() + ','
+                + this.latencyStats.count());
             this.latencyStats = new StatsAccumulator();
             this.lastTime = time;
           }
