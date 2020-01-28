@@ -1,10 +1,12 @@
 <FindBugsFilter>
 
+  <!-- Caused by Java 11 generating a null check on try with resources. This passed on Java 8 -->
   <Match>
-    <!-- Caused by Java 11 generating a null check on try with resources. This passed on Java 8 -->
     <Bug pattern="RCN_REDUNDANT_NULLCHECK_WOULD_HAVE_BEEN_A_NPE" />
-    
-    <!-- exclude messages with a rank lower than 15. Ranks range from 1 to 20, where 1 is top and 20 is lowest. -->
+  </Match>
+  
+  <!-- exclude messages with a rank lower than 15. Ranks range from 1 to 20, where 1 is top and 20 is lowest. -->
+  <Match>
     <Rank value="16" />
   </Match>
 
