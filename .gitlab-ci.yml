@@ -37,19 +37,19 @@ test:
     - dockerex
   script: ./gradlew test
 
-checkstyle:
+.checkstyle:
   stage: check
   tags:
     - dockerex
   script: ./gradlew checkstyle
   
-pmd:
+.pmd:
   stage: check
   tags:
     - dockerex
   script: ./gradlew pmd
   
-spotbugs:
+.spotbugs:
   stage: check
   tags:
     - dockerex

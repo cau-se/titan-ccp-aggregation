@@ -1,5 +1,6 @@
 package titan.ccp.aggregation.streamprocessing;
 
+import com.google.common.math.StatsAccumulator;
 import java.util.Set;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KeyValue;
@@ -154,9 +155,30 @@ public class TopologyBuilder {
         .filter((k, record) -> record.getTimestamp() != -1);
   }
 
+  private StatsAccumulator latencyStats = new StatsAccumulator();
+  private long lastTime = System.currentTimeMillis();
+
   private void exposeOutputStream(final KStream<String, AggregatedActivePowerRecord> aggregations) {
-    aggregations.to(this.outputTopic, Produced.with(
-        Serdes.String(),
-        IMonitoringRecordSerde.serde(new AggregatedActivePowerRecordFactory())));
+    aggregations
+        .peek((k, v) -> {
+          final long time = System.currentTimeMillis();
+          final long latency = time - v.getTimestamp();
+          this.latencyStats.add(latency);
+          if (time - this.lastTime >= 1000) {
+            System.out.println("latency,"
+                + time + ','
+                + this.latencyStats.mean() + ','
+                + this.latencyStats.populationStandardDeviation() + ','
+                + this.latencyStats.sampleStandardDeviation() + ','
+                + this.latencyStats.min() + ','
+                + this.latencyStats.max() + ','
+                + this.latencyStats.count());
+            this.latencyStats = new StatsAccumulator();
+            this.lastTime = time;
+          }
+        })
+        .to(this.outputTopic, Produced.with(
+            Serdes.String(),
+            IMonitoringRecordSerde.serde(new AggregatedActivePowerRecordFactory())));
   }
 }
