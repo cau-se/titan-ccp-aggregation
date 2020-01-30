@@ -188,8 +188,14 @@ public class TopologyBuilder {
             System.out.println("latency,"
                 + time + ','
                 + this.latencyStats.mean() + ','
-                + this.latencyStats.populationStandardDeviation() + ','
-                + this.latencyStats.sampleStandardDeviation() + ','
+                + (this.latencyStats.count() > 0
+                    ? this.latencyStats.populationStandardDeviation()
+                    : Double.NaN)
+                + ','
+                + (this.latencyStats.count() > 1
+                    ? this.latencyStats.sampleStandardDeviation()
+                    : Double.NaN)
+                + ','
                 + this.latencyStats.min() + ','
                 + this.latencyStats.max() + ','
                 + this.latencyStats.count());
