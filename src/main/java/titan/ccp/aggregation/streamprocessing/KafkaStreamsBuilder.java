@@ -11,11 +11,9 @@ import titan.ccp.common.kafka.streams.PropertiesBuilder;
  */
 public class KafkaStreamsBuilder {
 
-  private static final String APPLICATION_NAME = "titan-ccp-aggregation";
-  private static final String APPLICATION_VERSION = "0.0.1";
-
   // private static final Logger LOGGER = LoggerFactory.getLogger(KafkaStreamsBuilder.class);
 
+  private String applicationName; // NOPMD
   private String bootstrapServers; // NOPMD
   private String inputTopic; // NOPMD
   private String outputTopic; // NOPMD
@@ -23,6 +21,11 @@ public class KafkaStreamsBuilder {
   private int numThreads = -1; // NOPMD
   private int commitIntervalMs = -1; // NOPMD
   private int cacheMaxBytesBuff = -1; // NOPMD
+
+  public KafkaStreamsBuilder applicationName(final String applicationName) {
+    this.applicationName = applicationName;
+    return this;
+  }
 
   public KafkaStreamsBuilder inputTopic(final String inputTopic) {
     this.inputTopic = inputTopic;
@@ -86,6 +89,7 @@ public class KafkaStreamsBuilder {
    * Builds the {@link KafkaStreams} instance.
    */
   public KafkaStreams build() {
+    Objects.requireNonNull(this.applicationName, "Application name has not been set.");
     Objects.requireNonNull(this.inputTopic, "Input topic has not been set.");
     Objects.requireNonNull(this.outputTopic, "Output topic has not been set.");
     Objects.requireNonNull(this.configurationTopic, "Configuration topic has not been set.");
@@ -96,7 +100,7 @@ public class KafkaStreamsBuilder {
         this.configurationTopic);
     final Properties properties = PropertiesBuilder
         .bootstrapServers(this.bootstrapServers)
-        .applicationId(APPLICATION_NAME + '-' + APPLICATION_VERSION) // TODO as parameter
+        .applicationId(this.applicationName)
         .set(StreamsConfig.NUM_STREAM_THREADS_CONFIG, this.numThreads, p -> p > 0)
         .set(StreamsConfig.COMMIT_INTERVAL_MS_CONFIG, this.commitIntervalMs, p -> p >= 0)
         .set(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG, this.cacheMaxBytesBuff, p -> p >= 0)

@@ -20,6 +20,9 @@ public class AggregationService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TopologyBuilder.class);
 
+  private static final String NAME = "titan-ccp-aggregation";
+  private static final String VERSION = "0.0.1";
+
   private final Configuration config = Configurations.create();
   private final CompletableFuture<Void> stopEvent = new CompletableFuture<>();
 
@@ -49,6 +52,7 @@ public class AggregationService {
     final String configTopic = this.config.getString(ConfigurationKeys.CONFIGURATION_KAFKA_TOPIC);
 
     final KafkaStreams kafkaStreams = new KafkaStreamsBuilder()
+        .applicationName(NAME + '-' + VERSION)
         .bootstrapServers(servers)
         .inputTopic(inputTopic)
         .outputTopic(outputTopic)
