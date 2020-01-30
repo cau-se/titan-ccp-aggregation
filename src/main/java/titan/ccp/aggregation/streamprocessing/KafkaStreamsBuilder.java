@@ -4,6 +4,8 @@ import java.util.Objects;
 import java.util.Properties;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import titan.ccp.common.kafka.streams.PropertiesBuilder;
 
 /**
@@ -11,7 +13,7 @@ import titan.ccp.common.kafka.streams.PropertiesBuilder;
  */
 public class KafkaStreamsBuilder {
 
-  // private static final Logger LOGGER = LoggerFactory.getLogger(KafkaStreamsBuilder.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(KafkaStreamsBuilder.class);
 
   private String applicationName; // NOPMD
   private String bootstrapServers; // NOPMD
@@ -89,15 +91,18 @@ public class KafkaStreamsBuilder {
    * Builds the {@link KafkaStreams} instance.
    */
   public KafkaStreams build() {
-    Objects.requireNonNull(this.applicationName, "Application name has not been set.");
     Objects.requireNonNull(this.inputTopic, "Input topic has not been set.");
     Objects.requireNonNull(this.outputTopic, "Output topic has not been set.");
     Objects.requireNonNull(this.configurationTopic, "Configuration topic has not been set.");
-    // TODO log parameters
+    LOGGER.info(
+        "Build Kafka Streams aggregation topology with topics: input='{}', output='{}', 'configuration='{}'", // NOCS
+        this.inputTopic, this.outputTopic, this.configurationTopic);
     final TopologyBuilder topologyBuilder = new TopologyBuilder(
         this.inputTopic,
         this.outputTopic,
         this.configurationTopic);
+
+    // Non-null checks are performed by PropertiesBuilder
     final Properties properties = PropertiesBuilder
         .bootstrapServers(this.bootstrapServers)
         .applicationId(this.applicationName)
@@ -105,6 +110,7 @@ public class KafkaStreamsBuilder {
         .set(StreamsConfig.COMMIT_INTERVAL_MS_CONFIG, this.commitIntervalMs, p -> p >= 0)
         .set(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG, this.cacheMaxBytesBuff, p -> p >= 0)
         .build();
+
     return new KafkaStreams(topologyBuilder.build(), properties);
   }
 
