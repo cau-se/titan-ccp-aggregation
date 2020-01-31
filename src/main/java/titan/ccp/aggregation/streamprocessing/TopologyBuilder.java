@@ -13,7 +13,6 @@ import org.apache.kafka.streams.kstream.Produced;
 import titan.ccp.common.kieker.kafka.IMonitoringRecordSerde;
 import titan.ccp.configuration.events.Event;
 import titan.ccp.configuration.events.EventSerde;
-import titan.ccp.model.records.AggregatedActivePowerRecord.Builder;
 import titan.ccp.model.sensorregistry.SensorRegistry;
 import titan.ccp.models.records.ActivePowerRecord;
 import titan.ccp.models.records.ActivePowerRecordFactory;
@@ -105,12 +104,10 @@ public class TopologyBuilder {
     return this.builder
         .table(this.inputTopic,
             Consumed.with(this.serdes.string(), this.serdes.activePowerRecordValues()))
-        .mapValues(apAvro -> {
-          return new ActivePowerRecord(
-              apAvro.getIdentifier(),
-              apAvro.getTimestamp(),
-              apAvro.getValueInW());
-        });
+        .mapValues(apAvro -> new ActivePowerRecord(
+            apAvro.getIdentifier(),
+            apAvro.getTimestamp(),
+            apAvro.getValueInW()));
   }
 
   private KTable<SensorParentKey, ActivePowerRecord> buildLastValueTable(
@@ -151,8 +148,7 @@ public class TopologyBuilder {
                 this.serdes.string(),
                 IMonitoringRecordSerde.serde(new AggregatedActivePowerRecordFactory())))
         .toStream()
-        // TODO TODO timestamp -1 indicates that this record is emitted by an substract
-        // event
+        // TODO timestamp -1 indicates that this record is emitted by an substract event
         .filter((k, record) -> record.getTimestamp() != -1);
   }
 
@@ -164,18 +160,13 @@ public class TopologyBuilder {
    */
   private void exposeOutputStream(final KStream<String, AggregatedActivePowerRecord> aggregations) {
     aggregations.mapValues(
-        (final AggregatedActivePowerRecord aggrKieker) -> {
-          final Builder aggrAvroBuilder =
-              titan.ccp.model.records.AggregatedActivePowerRecord.newBuilder();
-          final titan.ccp.model.records.AggregatedActivePowerRecord aggrAvro =
-              aggrAvroBuilder
-                  .setIdentifier(aggrKieker.getIdentifier())
-                  .setTimestamp(aggrKieker.getTimestamp()).setMinInW(aggrKieker.getMinInW())
-                  .setMaxInW(aggrKieker.getMaxInW()).setCount(aggrKieker.getCount())
-                  .setSumInW(aggrKieker.getSumInW()).setAverageInW(aggrKieker.getAverageInW())
-                  .build();
-          return aggrAvro;
-        }).to(
+        aggrKieker -> titan.ccp.model.records.AggregatedActivePowerRecord.newBuilder()
+            .setIdentifier(aggrKieker.getIdentifier())
+            .setTimestamp(aggrKieker.getTimestamp()).setMinInW(aggrKieker.getMinInW())
+            .setMaxInW(aggrKieker.getMaxInW()).setCount(aggrKieker.getCount())
+            .setSumInW(aggrKieker.getSumInW()).setAverageInW(aggrKieker.getAverageInW())
+            .build())
+        .to(
             this.outputTopic,
             Produced.with(
                 this.serdes.string(),
