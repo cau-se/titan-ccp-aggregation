@@ -4,6 +4,8 @@ import java.util.Objects;
 import java.util.Properties;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import titan.ccp.common.kafka.streams.PropertiesBuilder;
 
 /**
@@ -11,11 +13,9 @@ import titan.ccp.common.kafka.streams.PropertiesBuilder;
  */
 public class KafkaStreamsBuilder {
 
-  private static final String APPLICATION_NAME = "titan-ccp-aggregation";
-  private static final String APPLICATION_VERSION = "0.0.1";
+  private static final Logger LOGGER = LoggerFactory.getLogger(KafkaStreamsBuilder.class);
 
-  // private static final Logger LOGGER = LoggerFactory.getLogger(KafkaStreamsBuilder.class);
-
+  private String applicationName; // NOPMD
   private String bootstrapServers; // NOPMD
   private String inputTopic; // NOPMD
   private String outputTopic; // NOPMD
@@ -24,6 +24,11 @@ public class KafkaStreamsBuilder {
   private int numThreads = -1; // NOPMD
   private int commitIntervalMs = -1; // NOPMD
   private int cacheMaxBytesBuff = -1; // NOPMD
+
+  public KafkaStreamsBuilder applicationName(final String applicationName) {
+    this.applicationName = applicationName;
+    return this;
+  }
 
   public KafkaStreamsBuilder inputTopic(final String inputTopic) {
     this.inputTopic = inputTopic;
@@ -95,19 +100,25 @@ public class KafkaStreamsBuilder {
     Objects.requireNonNull(this.inputTopic, "Input topic has not been set.");
     Objects.requireNonNull(this.outputTopic, "Output topic has not been set.");
     Objects.requireNonNull(this.configurationTopic, "Configuration topic has not been set.");
-    Objects.requireNonNull(this.schemaRegistryUrl, "Schema registry has not been set.");
-    // TODO log parameters
+    Objects.requireNonNull(this.schemaRegistryUrl, "Schema registry has not been set."); //TODO log
+    LOGGER.info(
+        "Build Kafka Streams aggregation topology with topics: input='{}', output='{}', 'configuration='{}'", // NOCS
+        this.inputTopic, this.outputTopic, this.configurationTopic);
+
     final TopologyBuilder topologyBuilder = new TopologyBuilder(
         new Serdes(this.schemaRegistryUrl),
         this.inputTopic,
         this.outputTopic,
         this.configurationTopic);
-    final Properties properties = PropertiesBuilder.bootstrapServers(this.bootstrapServers)
-        .applicationId(APPLICATION_NAME + '-' + APPLICATION_VERSION) // TODO as parameter
+    // Non-null checks are performed by PropertiesBuilder
+    final Properties properties = PropertiesBuilder
+        .bootstrapServers(this.bootstrapServers)
+        .applicationId(this.applicationName)
         .set(StreamsConfig.NUM_STREAM_THREADS_CONFIG, this.numThreads, p -> p > 0)
         .set(StreamsConfig.COMMIT_INTERVAL_MS_CONFIG, this.commitIntervalMs, p -> p >= 0)
         .set(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG, this.cacheMaxBytesBuff, p -> p >= 0)
         .build();
+
     return new KafkaStreams(topologyBuilder.build(), properties);
   }
 
