@@ -21,7 +21,7 @@ public class AggregationService {
   private static final Logger LOGGER = LoggerFactory.getLogger(TopologyBuilder.class);
 
   private static final String NAME = "titan-ccp-aggregation";
-  private static final String VERSION = "0.0.1";
+  private static final String VERSION = "0.0.2";
 
   private final Configuration config = Configurations.create();
   private final CompletableFuture<Void> stopEvent = new CompletableFuture<>();
