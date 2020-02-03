@@ -29,12 +29,15 @@ allprojects {
 	    maven {
 	    	url "https://oss.sonatype.org/content/repositories/snapshots/"
 	    }
+	    maven {
+	      url 'https://packages.confluent.io/maven/'
+    	}
 	}
 }
 
 dependencies {
-    compile('org.industrial-devops:titan-ccp-common:0.0.1-SNAPSHOT') { changing = true }
-    compile('org.industrial-devops:titan-ccp-common-kafka:0.0.1-SNAPSHOT') { changing = true }
+    compile('org.industrial-devops:titan-ccp-common:0.0.2-SNAPSHOT') { changing = true }
+    compile('org.industrial-devops:titan-ccp-common-kafka:0.0.2-SNAPSHOT') { changing = true }
     compile 'org.apache.kafka:kafka-streams:2.4.0'
     compile 'com.google.guava:guava:20.0'
     compile 'org.slf4j:slf4j-simple:1.7.25'

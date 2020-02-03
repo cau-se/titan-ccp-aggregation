@@ -19,6 +19,7 @@ public class KafkaStreamsBuilder {
   private String bootstrapServers; // NOPMD
   private String inputTopic; // NOPMD
   private String outputTopic; // NOPMD
+  private String schemaRegistryUrl; // NOPMD
   private String configurationTopic; // NOPMD
   private int numThreads = -1; // NOPMD
   private int commitIntervalMs = -1; // NOPMD
@@ -41,6 +42,11 @@ public class KafkaStreamsBuilder {
 
   public KafkaStreamsBuilder configurationTopic(final String configurationTopic) {
     this.configurationTopic = configurationTopic;
+    return this;
+  }
+
+  public KafkaStreamsBuilder schemaRegistry(final String url) {
+    this.schemaRegistryUrl = url;
     return this;
   }
 
@@ -94,14 +100,16 @@ public class KafkaStreamsBuilder {
     Objects.requireNonNull(this.inputTopic, "Input topic has not been set.");
     Objects.requireNonNull(this.outputTopic, "Output topic has not been set.");
     Objects.requireNonNull(this.configurationTopic, "Configuration topic has not been set.");
+    Objects.requireNonNull(this.schemaRegistryUrl, "Schema registry has not been set."); //TODO log
     LOGGER.info(
         "Build Kafka Streams aggregation topology with topics: input='{}', output='{}', 'configuration='{}'", // NOCS
         this.inputTopic, this.outputTopic, this.configurationTopic);
+
     final TopologyBuilder topologyBuilder = new TopologyBuilder(
+        new Serdes(this.schemaRegistryUrl),
         this.inputTopic,
         this.outputTopic,
         this.configurationTopic);
-
     // Non-null checks are performed by PropertiesBuilder
     final Properties properties = PropertiesBuilder
         .bootstrapServers(this.bootstrapServers)
