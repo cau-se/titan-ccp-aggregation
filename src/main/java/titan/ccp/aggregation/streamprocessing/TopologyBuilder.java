@@ -171,8 +171,8 @@ public class TopologyBuilder {
                     Serdes.String(),
                     this.windowSize.toMillis()),
                 IMonitoringRecordSerde.serde(new AggregatedActivePowerRecordFactory())))
-        // .suppress(Suppressed.untilTimeLimit(this.windowSize, BufferConfig.unbounded()))
-        .suppress(Suppressed.untilWindowCloses(BufferConfig.unbounded()))
+        .suppress(Suppressed.untilTimeLimit(this.windowSize, BufferConfig.unbounded()))
+        // .suppress(Suppressed.untilWindowCloses(BufferConfig.unbounded()))
         .toStream()
         // TODO timestamp -1 indicates that this record is emitted by an substract event
         .filter((k, record) -> record.getTimestamp() != -1)
