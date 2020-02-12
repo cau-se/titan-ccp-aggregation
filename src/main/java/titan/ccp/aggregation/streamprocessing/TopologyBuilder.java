@@ -128,7 +128,8 @@ public class TopologyBuilder {
 
     return configurationStream
         .mapValues(data -> SensorRegistry.fromJson(data))
-        .flatTransform(childParentsTransformerFactory.getTransformerSupplier(),
+        .flatTransform(
+            childParentsTransformerFactory.getTransformerSupplier(),
             childParentsTransformerFactory.getStoreName())
         .groupByKey(Grouped.with(this.serdes.string(), OptionalParentsSerde.serde()))
         .aggregate(() -> Set.<String>of(),
@@ -197,9 +198,12 @@ public class TopologyBuilder {
     aggregations.mapValues(
         aggrKieker -> titan.ccp.model.records.AggregatedActivePowerRecord.newBuilder()
             .setIdentifier(aggrKieker.getIdentifier())
-            .setTimestamp(aggrKieker.getTimestamp()).setMinInW(aggrKieker.getMinInW())
-            .setMaxInW(aggrKieker.getMaxInW()).setCount(aggrKieker.getCount())
-            .setSumInW(aggrKieker.getSumInW()).setAverageInW(aggrKieker.getAverageInW())
+            .setTimestamp(aggrKieker.getTimestamp())
+            .setMinInW(aggrKieker.getMinInW())
+            .setMaxInW(aggrKieker.getMaxInW())
+            .setCount(aggrKieker.getCount())
+            .setSumInW(aggrKieker.getSumInW())
+            .setAverageInW(aggrKieker.getAverageInW())
             .build())
         .to(this.outputTopic, Produced.with(
             this.serdes.string(),
