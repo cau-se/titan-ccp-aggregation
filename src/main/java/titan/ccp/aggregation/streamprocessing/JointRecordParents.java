@@ -26,6 +26,9 @@ public class JointRecordParents {
     return this.record;
   }
 
-
+  @Override
+  public String toString() {
+    return "{" + this.record + ", " + this.parents + "}";
+  }
 
 }
