@@ -12,14 +12,11 @@ import titan.ccp.common.kafka.streams.PropertiesBuilder;
 /**
  * Builder for the Kafka Streams configuration.
  */
-public class KafkaStreamsBuilder { // NOPMD builder method
+public class KafkaStreamsBuilder { // NOPMD builder methods
 
   private static final Logger LOGGER = LoggerFactory.getLogger(KafkaStreamsBuilder.class);
 
-  private static final Duration WINDOW_SIZE_DEFAULT = Duration.ofSeconds(1);
   private static final Duration GRACE_PERIOD_DEFAULT = Duration.ZERO;
-
-  // private static final Logger LOGGER = LoggerFactory.getLogger(KafkaStreamsBuilder.class);
 
   private String applicationName; // NOPMD
   private String bootstrapServers; // NOPMD
@@ -28,7 +25,7 @@ public class KafkaStreamsBuilder { // NOPMD builder method
   private String schemaRegistryUrl; // NOPMD
   private String configurationTopic; // NOPMD
   private Duration windowSize = null; // NOPMD
-  private Duration gracePeriod = null; // NOPMD
+  private Duration gracePeriod = GRACE_PERIOD_DEFAULT; // NOPMD
   private int numThreads = -1; // NOPMD
   private int commitIntervalMs = -1; // NOPMD
   private int cacheMaxBytesBuff = -1; // NOPMD
@@ -118,17 +115,22 @@ public class KafkaStreamsBuilder { // NOPMD builder method
     Objects.requireNonNull(this.inputTopic, "Input topic has not been set.");
     Objects.requireNonNull(this.outputTopic, "Output topic has not been set.");
     Objects.requireNonNull(this.configurationTopic, "Configuration topic has not been set.");
-    Objects.requireNonNull(this.schemaRegistryUrl, "Schema registry has not been set."); // TODO log
+    Objects.requireNonNull(this.schemaRegistryUrl, "Schema registry has not been set.");
+    Objects.requireNonNull(this.windowSize, "Window size has not been set.");
     LOGGER.info(
         "Build Kafka Streams aggregation topology with topics: input='{}', output='{}', 'configuration='{}'", // NOCS
         this.inputTopic, this.outputTopic, this.configurationTopic);
+    LOGGER.info("Use Schema Registry at '{}'", this.schemaRegistryUrl);
+    LOGGER.info(
+        "Configure aggregation topologie with window parameters: windowSize='{}', gracePeriod='{}'",
+        this.windowSize, this.gracePeriod);
 
     final TopologyBuilder topologyBuilder = new TopologyBuilder(
         new Serdes(this.schemaRegistryUrl),
         this.inputTopic,
         this.outputTopic,
         this.configurationTopic,
-        this.windowSize == null ? WINDOW_SIZE_DEFAULT : this.windowSize,
+        this.windowSize,
         this.gracePeriod == null ? GRACE_PERIOD_DEFAULT : this.gracePeriod);
 
     // Non-null checks are performed by PropertiesBuilder
