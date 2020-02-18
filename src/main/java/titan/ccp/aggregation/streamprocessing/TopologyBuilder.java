@@ -32,9 +32,11 @@ public class TopologyBuilder {
 
   // private static final Logger LOGGER = LoggerFactory.getLogger(TopologyBuilder.class);
 
+  private static final String FEEDBACK_TOPIC_NAME_TEMP = "feedback";
+
   private final Serdes serdes;
   private final String inputTopic;
-  private final String feedbackTopic = "feedback";
+  private final String feedbackTopic = FEEDBACK_TOPIC_NAME_TEMP;
   private final String outputTopic;
   private final String configurationTopic;
   private final Duration windowSize;
