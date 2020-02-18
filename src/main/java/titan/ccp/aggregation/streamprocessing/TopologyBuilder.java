@@ -16,14 +16,11 @@ import org.apache.kafka.streams.kstream.Suppressed.BufferConfig;
 import org.apache.kafka.streams.kstream.TimeWindows;
 import org.apache.kafka.streams.kstream.Windowed;
 import org.apache.kafka.streams.kstream.WindowedSerdes;
-import titan.ccp.common.kieker.kafka.IMonitoringRecordSerde;
 import titan.ccp.configuration.events.Event;
 import titan.ccp.configuration.events.EventSerde;
+import titan.ccp.model.records.ActivePowerRecord;
+import titan.ccp.model.records.AggregatedActivePowerRecord;
 import titan.ccp.model.sensorregistry.SensorRegistry;
-import titan.ccp.models.records.ActivePowerRecord;
-import titan.ccp.models.records.ActivePowerRecordFactory;
-import titan.ccp.models.records.AggregatedActivePowerRecord;
-import titan.ccp.models.records.AggregatedActivePowerRecordFactory;
 
 /**
  * Builds Kafka Stream Topology for the History microservice.
@@ -32,7 +29,7 @@ public class TopologyBuilder {
 
   // private static final Logger LOGGER = LoggerFactory.getLogger(TopologyBuilder.class);
 
-  private static final String FEEDBACK_TOPIC_NAME_TEMP = "feedback";
+  private static final String FEEDBACK_TOPIC_NAME_TEMP = "feedback"; // TODO Temp
 
   private final Serdes serdes;
   private final String inputTopic;
@@ -97,11 +94,7 @@ public class TopologyBuilder {
     final KStream<String, ActivePowerRecord> values = this.builder
         .stream(this.inputTopic, Consumed.with(
             this.serdes.string(),
-            this.serdes.activePowerRecordValues()))
-        .mapValues(apAvro -> new ActivePowerRecord(
-            apAvro.getIdentifier(),
-            apAvro.getTimestamp(),
-            apAvro.getValueInW()));
+            this.serdes.activePowerRecordValues()));
     final KStream<String, ActivePowerRecord> aggregationsInput = this.builder
         .stream(this.feedbackTopic, Consumed.with(
             this.serdes.string(),
@@ -112,10 +105,10 @@ public class TopologyBuilder {
         .merge(aggregationsInput)
         .groupByKey(Grouped.with(
             this.serdes.string(),
-            IMonitoringRecordSerde.serde(new ActivePowerRecordFactory())))
+            this.serdes.activePowerRecordValues()))
         .reduce((aggr, value) -> value, Materialized.with(
             this.serdes.string(),
-            IMonitoringRecordSerde.serde(new ActivePowerRecordFactory())));
+            this.serdes.activePowerRecordValues()));
     return inputTable;
   }
 
@@ -156,14 +149,14 @@ public class TopologyBuilder {
             jointFlatMapTransformerFactory.getStoreName())
         .groupByKey(Grouped.with(
             SensorParentKeySerde.serde(),
-            IMonitoringRecordSerde.serde(new ActivePowerRecordFactory())))
+            this.serdes.activePowerRecordValues()))
         .windowedBy(TimeWindows.of(this.windowSize).grace(this.gracePeriod))
         .reduce(
             // TODO Configurable window aggregation function
             (aggValue, newValue) -> newValue,
             Materialized.with(
                 SensorParentKeySerde.serde(),
-                IMonitoringRecordSerde.serde(new ActivePowerRecordFactory())));
+                this.serdes.activePowerRecordValues()));
 
   }
 
@@ -176,7 +169,7 @@ public class TopologyBuilder {
                 new WindowedSerdes.TimeWindowedSerde<>(
                     this.serdes.string(),
                     this.windowSize.toMillis()),
-                IMonitoringRecordSerde.serde(new ActivePowerRecordFactory())))
+                this.serdes.activePowerRecordValues()))
         .aggregate(
             () -> null,
             this.recordAggregator::add,
@@ -185,7 +178,7 @@ public class TopologyBuilder {
                 new WindowedSerdes.TimeWindowedSerde<>(
                     this.serdes.string(),
                     this.windowSize.toMillis()),
-                IMonitoringRecordSerde.serde(new AggregatedActivePowerRecordFactory())))
+                this.serdes.aggregatedActivePowerRecordValues()))
         // TODO timestamp -1 indicates that this record is emitted by an substract event
         .filter((k, record) -> record.getTimestamp() != -1);
     // TODO compute Timestamp
@@ -216,34 +209,14 @@ public class TopologyBuilder {
     aggregations
         .toStream()
         .filter((k, record) -> record != null)
-        .map((k, v) -> KeyValue.pair(
-            k.key(),
-            titan.ccp.model.records.AggregatedActivePowerRecord.newBuilder()
-                .setIdentifier(v.getIdentifier())
-                .setTimestamp(v.getTimestamp())
-                .setMinInW(v.getMinInW())
-                .setMaxInW(v.getMaxInW())
-                .setCount(v.getCount())
-                .setSumInW(v.getSumInW())
-                .setAverageInW(v.getAverageInW())
-                .build()))
+        .selectKey((k, v) -> k.key())
         .to(this.feedbackTopic, Produced.with(
             this.serdes.string(), this.serdes.aggregatedActivePowerRecordValues()));
 
     aggregations
         .suppress(Suppressed.untilTimeLimit(this.windowSize, BufferConfig.unbounded()))
         .toStream()
-        .map((k, v) -> KeyValue.pair(
-            k.key(),
-            titan.ccp.model.records.AggregatedActivePowerRecord.newBuilder()
-                .setIdentifier(v.getIdentifier())
-                .setTimestamp(v.getTimestamp())
-                .setMinInW(v.getMinInW())
-                .setMaxInW(v.getMaxInW())
-                .setCount(v.getCount())
-                .setSumInW(v.getSumInW())
-                .setAverageInW(v.getAverageInW())
-                .build()))
+        .selectKey((k, v) -> k.key())
         .to(this.outputTopic, Produced.with(
             this.serdes.string(),
             this.serdes.aggregatedActivePowerRecordValues()));

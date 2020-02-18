@@ -1,8 +1,9 @@
 package titan.ccp.aggregation.streamprocessing;
 
 import org.apache.kafka.streams.kstream.Windowed;
-import titan.ccp.models.records.ActivePowerRecord;
-import titan.ccp.models.records.AggregatedActivePowerRecord;
+import titan.ccp.model.records.ActivePowerRecord;
+import titan.ccp.model.records.AggregatedActivePowerRecord;
+
 
 /**
  * Updates an {@link AggregatedActivePowerRecord} by a new {@link ActivePowerRecord}.
@@ -34,7 +35,7 @@ public class RecordAggregator {
     final double average = count == 0 ? 0.0 : sum / count;
     return new AggregatedActivePowerRecord(
         // TODO timestamp -1 indicates that this record is emitted by an substract event
-        identifier.key(), -1,
+        identifier.key(), -1L,
         0.0, 0.0, count, sum, average);
   }
 

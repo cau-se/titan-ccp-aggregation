@@ -1,7 +1,8 @@
 package titan.ccp.aggregation.streamprocessing;
 
 import java.util.Set;
-import titan.ccp.models.records.ActivePowerRecord;
+import titan.ccp.model.records.ActivePowerRecord;
+
 
 /**
  * A joined pair of an {@link ActivePowerRecord} and its associated parents. Both the record and the
