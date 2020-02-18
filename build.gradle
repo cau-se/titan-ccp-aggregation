@@ -19,33 +19,33 @@ sourceCompatibility = "1.11"
 targetCompatibility = "1.11"
 
 configurations.all {
-    // Check for updates every build
-    resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
+  // Check for updates every build
+  resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
 }
 
 allprojects { 
-	repositories {
-	    jcenter()
-	    maven {
-	    	url "https://oss.sonatype.org/content/repositories/snapshots/"
-	    }
-	    maven {
-	      url 'https://packages.confluent.io/maven/'
-    	}
+  repositories {
+	jcenter()
+	maven {
+      url "https://oss.sonatype.org/content/repositories/snapshots/"
 	}
+    maven {
+      url 'https://packages.confluent.io/maven/'
+    }
+  }
 }
 
 dependencies {
-    compile('org.industrial-devops:titan-ccp-common:0.0.2-SNAPSHOT') { changing = true }
-    compile('org.industrial-devops:titan-ccp-common-kafka:0.0.2-SNAPSHOT') { changing = true }
-    compile 'org.apache.kafka:kafka-streams:2.4.0'
-    compile 'com.google.guava:guava:20.0'
-    compile 'org.slf4j:slf4j-simple:1.7.25'
+  compile('org.industrial-devops:titan-ccp-common:0.0.2-SNAPSHOT') { changing = true }
+  compile('org.industrial-devops:titan-ccp-common-kafka:0.0.2-SNAPSHOT') { changing = true }
+  compile 'org.apache.kafka:kafka-streams:2.4.0'
+  compile 'com.google.guava:guava:20.0'
+  compile 'org.slf4j:slf4j-simple:1.7.25'
 
-    // Use JUnit test framework
-    testCompile 'junit:junit:4.12'
-    testCompile 'com.github.stefanbirkner:system-rules:1.17.0'
-	testCompile 'org.apache.kafka:kafka-streams-test-utils:2.4.0'
+  // Use JUnit test framework
+  testCompile 'junit:junit:4.12'
+  testCompile 'com.github.stefanbirkner:system-rules:1.17.0'
+  testCompile 'org.apache.kafka:kafka-streams-test-utils:2.4.0'
     
 }
 
@@ -109,8 +109,8 @@ task spotbugs {
 }
 
 eclipse {
-    classpath {
-       downloadSources=true
-       downloadJavadoc=true
-    }
+  classpath {
+    downloadSources=true
+    downloadJavadoc=true
+  }
 }
