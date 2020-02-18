@@ -45,6 +45,8 @@ dependencies {
     // Use JUnit test framework
     testCompile 'junit:junit:4.12'
     testCompile 'com.github.stefanbirkner:system-rules:1.17.0'
+	testCompile 'org.apache.kafka:kafka-streams-test-utils:2.4.0'
+    
 }
 
 mainClassName = "titan.ccp.aggregation.AggregationService"
