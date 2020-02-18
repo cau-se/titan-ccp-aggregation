@@ -34,6 +34,7 @@ public class TopologyBuilder {
 
   private final Serdes serdes;
   private final String inputTopic;
+  private final String feedbackTopic = "feedback";
   private final String outputTopic;
   private final String configurationTopic;
   private final Duration windowSize;
@@ -75,7 +76,7 @@ public class TopologyBuilder {
         this.buildLastValueTable(parentSensorTable, inputTable);
 
     // 4. Build Aggregations Stream
-    final KStream<String, AggregatedActivePowerRecord> aggregations =
+    final KTable<Windowed<String>, AggregatedActivePowerRecord> aggregations =
         this.buildAggregationStream(lastValueTable);
 
     // 5. Expose Aggregations Stream
@@ -100,7 +101,7 @@ public class TopologyBuilder {
             apAvro.getTimestamp(),
             apAvro.getValueInW()));
     final KStream<String, ActivePowerRecord> aggregationsInput = this.builder
-        .stream(this.outputTopic, Consumed.with(
+        .stream(this.feedbackTopic, Consumed.with(
             this.serdes.string(),
             this.serdes.aggregatedActivePowerRecordValues()))
         .mapValues(r -> new ActivePowerRecord(r.getIdentifier(), r.getTimestamp(), r.getSumInW()));
@@ -132,7 +133,8 @@ public class TopologyBuilder {
             childParentsTransformerFactory.getTransformerSupplier(),
             childParentsTransformerFactory.getStoreName())
         .groupByKey(Grouped.with(this.serdes.string(), OptionalParentsSerde.serde()))
-        .aggregate(() -> Set.<String>of(),
+        .aggregate(
+            () -> Set.<String>of(),
             (key, newValue, oldValue) -> newValue.orElse(null),
             Materialized.with(this.serdes.string(), ParentsSerde.serde()));
   }
@@ -157,12 +159,13 @@ public class TopologyBuilder {
         .reduce(
             // TODO Configurable window aggregation function
             (aggValue, newValue) -> newValue,
-            Materialized.with(SensorParentKeySerde.serde(),
+            Materialized.with(
+                SensorParentKeySerde.serde(),
                 IMonitoringRecordSerde.serde(new ActivePowerRecordFactory())));
 
   }
 
-  private KStream<String, AggregatedActivePowerRecord> buildAggregationStream(
+  private KTable<Windowed<String>, AggregatedActivePowerRecord> buildAggregationStream(
       final KTable<Windowed<SensorParentKey>, ActivePowerRecord> lastValueTable) {
     return lastValueTable
         .groupBy(
@@ -173,19 +176,30 @@ public class TopologyBuilder {
                     this.windowSize.toMillis()),
                 IMonitoringRecordSerde.serde(new ActivePowerRecordFactory())))
         .aggregate(
-            () -> null, this.recordAggregator::add,
+            () -> null,
+            this.recordAggregator::add,
             this.recordAggregator::substract,
             Materialized.with(
                 new WindowedSerdes.TimeWindowedSerde<>(
                     this.serdes.string(),
                     this.windowSize.toMillis()),
                 IMonitoringRecordSerde.serde(new AggregatedActivePowerRecordFactory())))
-        .suppress(Suppressed.untilTimeLimit(this.windowSize, BufferConfig.unbounded()))
-        // .suppress(Suppressed.untilWindowCloses(BufferConfig.unbounded()))
-        .toStream()
         // TODO timestamp -1 indicates that this record is emitted by an substract event
-        .filter((k, record) -> record.getTimestamp() != -1)
-        .map((k, v) -> KeyValue.pair(k.key(), v)); // TODO compute Timestamp
+        .filter((k, record) -> record.getTimestamp() != -1);
+    // TODO compute Timestamp
+    // .mapValues((k, v) -> new AggregatedActivePowerRecord(
+    // v.getIdentifier(),
+    // k.window().end() - 1,
+    // v.getMinInW(),
+    // v.getMaxInW(),
+    // v.getCount(),
+    // v.getSumInW(),
+    // v.getAverageInW()));
+
+    // .suppress(Suppressed.untilTimeLimit(this.windowSize, BufferConfig.unbounded()))
+    // .suppress(Suppressed.untilWindowCloses(BufferConfig.unbounded()))
+
+
   }
 
   /**
@@ -194,19 +208,43 @@ public class TopologyBuilder {
    *
    * @param aggregations containing the aggregations of the input data.
    */
-  private void exposeOutputStream(final KStream<String, AggregatedActivePowerRecord> aggregations) {
-    aggregations.mapValues(
-        aggrKieker -> titan.ccp.model.records.AggregatedActivePowerRecord.newBuilder()
-            .setIdentifier(aggrKieker.getIdentifier())
-            .setTimestamp(aggrKieker.getTimestamp())
-            .setMinInW(aggrKieker.getMinInW())
-            .setMaxInW(aggrKieker.getMaxInW())
-            .setCount(aggrKieker.getCount())
-            .setSumInW(aggrKieker.getSumInW())
-            .setAverageInW(aggrKieker.getAverageInW())
-            .build())
+  private void exposeOutputStream(
+      final KTable<Windowed<String>, AggregatedActivePowerRecord> aggregations) {
+
+    aggregations
+        .toStream()
+        .filter((k, record) -> record != null)
+        .map((k, v) -> KeyValue.pair(
+            k.key(),
+            titan.ccp.model.records.AggregatedActivePowerRecord.newBuilder()
+                .setIdentifier(v.getIdentifier())
+                .setTimestamp(v.getTimestamp())
+                .setMinInW(v.getMinInW())
+                .setMaxInW(v.getMaxInW())
+                .setCount(v.getCount())
+                .setSumInW(v.getSumInW())
+                .setAverageInW(v.getAverageInW())
+                .build()))
+        .to(this.feedbackTopic, Produced.with(
+            this.serdes.string(), this.serdes.aggregatedActivePowerRecordValues()));
+
+    aggregations
+        .suppress(Suppressed.untilTimeLimit(this.windowSize, BufferConfig.unbounded()))
+        .toStream()
+        .map((k, v) -> KeyValue.pair(
+            k.key(),
+            titan.ccp.model.records.AggregatedActivePowerRecord.newBuilder()
+                .setIdentifier(v.getIdentifier())
+                .setTimestamp(v.getTimestamp())
+                .setMinInW(v.getMinInW())
+                .setMaxInW(v.getMaxInW())
+                .setCount(v.getCount())
+                .setSumInW(v.getSumInW())
+                .setAverageInW(v.getAverageInW())
+                .build()))
         .to(this.outputTopic, Produced.with(
             this.serdes.string(),
             this.serdes.aggregatedActivePowerRecordValues()));
   }
+
 }
