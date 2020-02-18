@@ -75,10 +75,10 @@ public class TopologyTest {
         OUTPUT_TOPIC,
         this.serdes.string().deserializer(),
         this.serdes.aggregatedActivePowerRecordValues().deserializer());
-    this.feedbackTopic = this.testDriver.createOutputTopic(
-        FEEDBACK_TOPIC,
-        this.serdes.string().deserializer(),
-        this.serdes.aggregatedActivePowerRecordValues().deserializer());
+    // this.feedbackTopic = this.testDriver.createOutputTopic(
+    // FEEDBACK_TOPIC,
+    // this.serdes.string().deserializer(),
+    // this.serdes.aggregatedActivePowerRecordValues().deserializer());
 
   }
 
