@@ -17,8 +17,10 @@ public class RecordAggregator {
     final long count = (aggregated == null ? 0 : aggregated.getCount()) + 1;
     final double sum = (aggregated == null ? 0.0 : aggregated.getSumInW()) + record.getValueInW();
     final double average = count == 0 ? 0.0 : sum / count;
+    final long timestamp = aggregated == null ? record.getTimestamp()
+        : Math.max(aggregated.getTimestamp(), record.getTimestamp());
     return new AggregatedActivePowerRecord(
-        identifier.key(), record.getTimestamp(),
+        identifier.key(), timestamp,
         0.0, 0.0, count, sum, average);
   }
 
