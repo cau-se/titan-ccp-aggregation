@@ -21,9 +21,10 @@ public class KafkaStreamsBuilder { // NOPMD builder methods
   private String applicationName; // NOPMD
   private String bootstrapServers; // NOPMD
   private String inputTopic; // NOPMD
+  private String configurationTopic; // NOPMD
+  private String feedbackTopic; // NOPMD
   private String outputTopic; // NOPMD
   private String schemaRegistryUrl; // NOPMD
-  private String configurationTopic; // NOPMD
   private Duration windowSize = null; // NOPMD
   private Duration gracePeriod = GRACE_PERIOD_DEFAULT; // NOPMD
   private int numThreads = -1; // NOPMD
@@ -40,13 +41,18 @@ public class KafkaStreamsBuilder { // NOPMD builder methods
     return this;
   }
 
-  public KafkaStreamsBuilder outputTopic(final String outputTopic) {
-    this.outputTopic = outputTopic;
+  public KafkaStreamsBuilder configurationTopic(final String configurationTopic) {
+    this.configurationTopic = configurationTopic;
     return this;
   }
 
-  public KafkaStreamsBuilder configurationTopic(final String configurationTopic) {
-    this.configurationTopic = configurationTopic;
+  public KafkaStreamsBuilder feedbackTopic(final String feedbackTopic) {
+    this.feedbackTopic = feedbackTopic;
+    return this;
+  }
+
+  public KafkaStreamsBuilder outputTopic(final String outputTopic) {
+    this.outputTopic = outputTopic;
     return this;
   }
 
@@ -118,8 +124,8 @@ public class KafkaStreamsBuilder { // NOPMD builder methods
     Objects.requireNonNull(this.schemaRegistryUrl, "Schema registry has not been set.");
     Objects.requireNonNull(this.windowSize, "Window size has not been set.");
     LOGGER.info(
-        "Build Kafka Streams aggregation topology with topics: input='{}', output='{}', 'configuration='{}'", // NOCS
-        this.inputTopic, this.outputTopic, this.configurationTopic);
+        "Build Kafka Streams aggregation topology with topics: input='{}', 'configuration='{}', feedback='{}', output='{}'", // NOCS
+        this.inputTopic, this.configurationTopic, this.feedbackTopic, this.outputTopic);
     LOGGER.info("Use Schema Registry at '{}'", this.schemaRegistryUrl);
     LOGGER.info(
         "Configure aggregation topologie with window parameters: windowSize='{}', gracePeriod='{}'",
@@ -128,8 +134,9 @@ public class KafkaStreamsBuilder { // NOPMD builder methods
     final TopologyBuilder topologyBuilder = new TopologyBuilder(
         new Serdes(this.schemaRegistryUrl),
         this.inputTopic,
-        this.outputTopic,
         this.configurationTopic,
+        this.feedbackTopic,
+        this.outputTopic,
         this.windowSize,
         this.gracePeriod == null ? GRACE_PERIOD_DEFAULT : this.gracePeriod);
 

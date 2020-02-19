@@ -27,13 +27,9 @@ import titan.ccp.model.sensorregistry.SensorRegistry;
  */
 public class TopologyBuilder {
 
-  // private static final Logger LOGGER = LoggerFactory.getLogger(TopologyBuilder.class);
-
-  private static final String FEEDBACK_TOPIC_NAME_TEMP = "feedback"; // TODO Temp
-
   private final Serdes serdes;
   private final String inputTopic;
-  private final String feedbackTopic = FEEDBACK_TOPIC_NAME_TEMP;
+  private final String feedbackTopic;
   private final String outputTopic;
   private final String configurationTopic;
   private final Duration windowSize;
@@ -50,12 +46,14 @@ public class TopologyBuilder {
    * @param outputTopic The topic where to write the aggregated data.
    * @param configurationTopic The topic where the hierarchy of the sensors is published.
    */
-  public TopologyBuilder(final Serdes serdes, final String inputTopic, final String outputTopic,
-      final String configurationTopic, final Duration windowSize, final Duration gracePeriod) {
+  public TopologyBuilder(final Serdes serdes, final String inputTopic,
+      final String configurationTopic, final String feedbackTopic, final String outputTopic,
+      final Duration windowSize, final Duration gracePeriod) {
     this.serdes = serdes;
     this.inputTopic = inputTopic;
-    this.outputTopic = outputTopic;
     this.configurationTopic = configurationTopic;
+    this.feedbackTopic = feedbackTopic;
+    this.outputTopic = outputTopic;
     this.windowSize = windowSize;
     this.gracePeriod = gracePeriod;
   }
@@ -181,20 +179,6 @@ public class TopologyBuilder {
                 this.serdes.aggregatedActivePowerRecordValues()))
         // TODO timestamp -1 indicates that this record is emitted by an substract event
         .filter((k, record) -> record.getTimestamp() != -1);
-    // TODO compute Timestamp
-    // .mapValues((k, v) -> new AggregatedActivePowerRecord(
-    // v.getIdentifier(),
-    // k.window().end() - 1,
-    // v.getMinInW(),
-    // v.getMaxInW(),
-    // v.getCount(),
-    // v.getSumInW(),
-    // v.getAverageInW()));
-
-    // .suppress(Suppressed.untilTimeLimit(this.windowSize, BufferConfig.unbounded()))
-    // .suppress(Suppressed.untilWindowCloses(BufferConfig.unbounded()))
-
-
   }
 
   /**
@@ -214,6 +198,7 @@ public class TopologyBuilder {
             this.serdes.string(), this.serdes.aggregatedActivePowerRecordValues()));
 
     aggregations
+        // .suppress(Suppressed.untilWindowCloses(BufferConfig.unbounded()))
         .suppress(Suppressed.untilTimeLimit(this.windowSize, BufferConfig.unbounded()))
         .toStream()
         .selectKey((k, v) -> k.key())

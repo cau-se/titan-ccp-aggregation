@@ -22,7 +22,7 @@ public class AggregationService {
   private static final Logger LOGGER = LoggerFactory.getLogger(TopologyBuilder.class);
 
   private static final String NAME = "titan-ccp-aggregation";
-  private static final String VERSION = "0.0.2";
+  private static final String VERSION = "0.0.3";
 
   private final Configuration config = Configurations.create();
   private final CompletableFuture<Void> stopEvent = new CompletableFuture<>();
@@ -49,15 +49,17 @@ public class AggregationService {
   private void createKafkaStreamsApplication() {
     final String servers = this.config.getString(ConfigurationKeys.KAFKA_BOOTSTRAP_SERVERS);
     final String inputTopic = this.config.getString(ConfigurationKeys.KAFKA_INPUT_TOPIC);
+    final String configTopic = this.config.getString(ConfigurationKeys.KAFKA_CONFIGURATION_TOPIC);
+    final String feedbackTopic = this.config.getString(ConfigurationKeys.KAFKA_FEEDBACK_TOPIC);
     final String outputTopic = this.config.getString(ConfigurationKeys.KAFKA_OUTPUT_TOPIC);
-    final String configTopic = this.config.getString(ConfigurationKeys.CONFIGURATION_KAFKA_TOPIC);
 
     final KafkaStreams kafkaStreams = new KafkaStreamsBuilder()
         .applicationName(NAME + '-' + VERSION)
         .bootstrapServers(this.config.getString(ConfigurationKeys.KAFKA_BOOTSTRAP_SERVERS))
-        .inputTopic(this.config.getString(ConfigurationKeys.KAFKA_INPUT_TOPIC))
-        .outputTopic(this.config.getString(ConfigurationKeys.KAFKA_OUTPUT_TOPIC))
-        .configurationTopic(this.config.getString(ConfigurationKeys.CONFIGURATION_KAFKA_TOPIC))
+        .inputTopic(inputTopic)
+        .configurationTopic(configTopic)
+        .feedbackTopic(feedbackTopic)
+        .outputTopic(outputTopic)
         .schemaRegistry(this.config.getString(ConfigurationKeys.SCHEMA_REGISTRY_URL))
         .windowSize(Duration.ofMillis(this.config.getLong(ConfigurationKeys.WINDOW_SIZE_MS)))
         .gracePeriod(Duration.ofMillis(this.config.getLong(ConfigurationKeys.WINDOW_GRACE_MS)))

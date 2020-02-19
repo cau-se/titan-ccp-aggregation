@@ -41,12 +41,11 @@ public class TopologyTest {
     final Topology topology = new TopologyBuilder(
         this.serdes,
         INPUT_TOPIC,
-        OUTPUT_TOPIC,
         CONFIGURATION_TOPIC,
+        FEEDBACK_TOPIC,
+        OUTPUT_TOPIC,
         Duration.ofSeconds(2),
         Duration.ofSeconds(2)).build();
-    // inal Serdes serdes, final String inputTopic, final String outputTopic,
-    // final String configurationTopic, final Duration windowSize, final Duration gracePeriod
 
     // setup test driver
     final Properties props = new Properties();
