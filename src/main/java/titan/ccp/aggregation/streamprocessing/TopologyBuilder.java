@@ -23,7 +23,7 @@ import titan.ccp.model.records.AggregatedActivePowerRecord;
 import titan.ccp.model.sensorregistry.SensorRegistry;
 
 /**
- * Builds Kafka Stream Topology for the History microservice.
+ * Builds Kafka Stream Topology for the Aggregation microservice.
  */
 public class TopologyBuilder {
 
@@ -41,10 +41,14 @@ public class TopologyBuilder {
   /**
    * Create a new {@link TopologyBuilder} using the given topics.
    *
-   * @param serdes The serdes to use in the topology.
-   * @param inputTopic The topic where to get the data from.
-   * @param outputTopic The topic where to write the aggregated data.
+   * @param serdes The {@link Serdes} to use in the topology.
+   * @param inputTopic The topic where to read sensor measurements from.
    * @param configurationTopic The topic where the hierarchy of the sensors is published.
+   * @param feedbackTopic The topic where aggregation results are written to for feedback.
+   * @param outputTopic The topic where to publish aggregation results.
+   * @param emitPeriod The Duration results are emitted with.
+   * @param gracePeriod The Duration for how long late arriving records are considered.
+   *
    */
   public TopologyBuilder(final Serdes serdes, final String inputTopic,
       final String configurationTopic, final String feedbackTopic, final String outputTopic,
@@ -59,7 +63,7 @@ public class TopologyBuilder {
   }
 
   /**
-   * Build the {@link Topology} for the History microservice.
+   * Build the {@link Topology} for the Aggregation microservice.
    */
   public Topology build() {
     // 1. Build Parent-Sensor Table
@@ -76,18 +80,15 @@ public class TopologyBuilder {
     final KTable<Windowed<String>, AggregatedActivePowerRecord> aggregations =
         this.buildAggregationStream(lastValueTable);
 
+    // 6. Expose Feedback Stream
+    this.exposeFeedbackStream(aggregations);
+
     // 5. Expose Aggregations Stream
     this.exposeOutputStream(aggregations);
 
     return this.builder.build();
   }
 
-  /**
-   * Creates a table for the input topic and maps the Avro {@code ActivePowerRecord} to the Kieker
-   * {@code ActivePowerRecord}.
-   *
-   * @return a table from the input topic
-   */
   private KTable<String, ActivePowerRecord> buildInputTable() {
     final KStream<String, ActivePowerRecord> values = this.builder
         .stream(this.inputTopic, Consumed.with(
@@ -181,13 +182,7 @@ public class TopologyBuilder {
         .filter((k, record) -> record.getTimestamp() != -1);
   }
 
-  /**
-   * Write the aggreations stream to the output topic. It converts the Kieker
-   * {@code AggregatedActivePowerRecord} to the Avro {@code AggregatedActivePowerRecord}.
-   *
-   * @param aggregations containing the aggregations of the input data.
-   */
-  private void exposeOutputStream(
+  private void exposeFeedbackStream(
       final KTable<Windowed<String>, AggregatedActivePowerRecord> aggregations) {
 
     aggregations
@@ -196,6 +191,10 @@ public class TopologyBuilder {
         .selectKey((k, v) -> k.key())
         .to(this.feedbackTopic, Produced.with(
             this.serdes.string(), this.serdes.aggregatedActivePowerRecordValues()));
+  }
+
+  private void exposeOutputStream(
+      final KTable<Windowed<String>, AggregatedActivePowerRecord> aggregations) {
 
     aggregations
         // .suppress(Suppressed.untilWindowCloses(BufferConfig.unbounded()))
