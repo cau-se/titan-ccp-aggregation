@@ -43,8 +43,8 @@ public class TopologyTest {
         INPUT_TOPIC,
         OUTPUT_TOPIC,
         CONFIGURATION_TOPIC,
-        Duration.ofSeconds(3),
-        Duration.ofSeconds(10)).build();
+        Duration.ofSeconds(2),
+        Duration.ofSeconds(2)).build();
     // inal Serdes serdes, final String inputTopic, final String outputTopic,
     // final String configurationTopic, final Duration windowSize, final Duration gracePeriod
 
@@ -52,8 +52,6 @@ public class TopologyTest {
     final Properties props = new Properties();
     props.setProperty(StreamsConfig.APPLICATION_ID_CONFIG, "dummy-aggregation");
     props.setProperty(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "dummy:1234");
-    // props.setProperty(StreamsConfig.COMMIT_INTERVAL_MS_CONFIG, "0"); // TODO requird?
-    // props.setProperty(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG, "0"); // TODO requird?
     this.testDriver = new TopologyTestDriver(topology, props);
     this.inputTopic = this.testDriver.createInputTopic(
         INPUT_TOPIC,
@@ -100,12 +98,11 @@ public class TopologyTest {
         Instant.ofEpochSecond(0));
 
     // Publish input records
-    this.pipeInput("child1", Instant.ofEpochSecond(1), 100.0);
-    this.pipeInput("child2", Instant.ofEpochSecond(2), 100.0);
+    this.pipeInput("child1", Instant.ofEpochSecond(0), 100.0);
+    this.pipeInput("child2", Instant.ofEpochSecond(1), 100.0);
 
     // Advance time to obtain outputs
-    // this.testDriver.advanceWallClockTime(Duration.ofSeconds(10));
-    this.pipeInput("child2", Instant.ofEpochSecond(4), 123.0);
+    this.pipeInput("child2", Instant.ofEpochSecond(2), 123.0);
 
     // Check aggregation results
     Assert.assertEquals(1, this.outputTopic.getQueueSize());
@@ -134,14 +131,13 @@ public class TopologyTest {
         Instant.ofEpochSecond(0));
 
     // Publish input records
-    this.pipeInput("sensor-1-1", Instant.ofEpochSecond(1), 100.0);
-    this.pipeInput("sensor-2-1", Instant.ofEpochSecond(1), 100.0);
-    this.pipeInput("sensor-1-2", Instant.ofEpochSecond(2), 100.0);
-    this.pipeInput("sensor-2-2", Instant.ofEpochSecond(2), 100.0);
+    this.pipeInput("sensor-1-1", Instant.ofEpochSecond(0), 100.0);
+    this.pipeInput("sensor-2-1", Instant.ofEpochSecond(0), 100.0);
+    this.pipeInput("sensor-1-2", Instant.ofEpochSecond(1), 100.0);
+    this.pipeInput("sensor-2-2", Instant.ofEpochSecond(1), 100.0);
 
     // Advance time to obtain outputs
-    // this.testDriver.advanceWallClockTime(Duration.ofSeconds(10)); // Does not work
-    this.pipeInput("sensor-2-2", Instant.ofEpochSecond(4), 123.0);
+    this.pipeInput("sensor-2-2", Instant.ofEpochSecond(2), 123.0);
 
     // Check aggregation results
     Assert.assertEquals(3, this.outputTopic.getQueueSize());
@@ -160,6 +156,66 @@ public class TopologyTest {
     Assert.assertEquals("sensor-2", sensor2Result.getIdentifier());
     Assert.assertEquals(2, sensor2Result.getCount());
     Assert.assertEquals(200.0, sensor2Result.getSumInW(), 0.1);
+  }
+
+  @Test
+  public void testUnbalancedRegistry() {
+    // Publish sensor registry
+    final MutableSensorRegistry registry = new MutableSensorRegistry("root");
+    final MutableAggregatedSensor root = registry.getTopLevelSensor();
+    final MutableAggregatedSensor sensor1 = root.addChildAggregatedSensor("sensor-1");
+    sensor1.addChildMachineSensor("sensor-1-1");
+    sensor1.addChildMachineSensor("sensor-1-2");
+    final MutableAggregatedSensor sensor2 = root.addChildAggregatedSensor("sensor-2");
+    final MutableAggregatedSensor sensor21 = sensor2.addChildAggregatedSensor("sensor-2-1");
+    sensor21.addChildMachineSensor("sensor-2-1-1");
+    sensor21.addChildMachineSensor("sensor-2-1-2");
+    final MutableAggregatedSensor sensor22 = sensor2.addChildAggregatedSensor("sensor-2-2");
+    sensor22.addChildMachineSensor("sensor-2-2-1");
+    sensor22.addChildMachineSensor("sensor-2-2-2");
+    this.configurationTopic.pipeInput(
+        Event.SENSOR_REGISTRY_CHANGED,
+        registry.toJson(),
+        Instant.ofEpochSecond(0));
+
+    // Publish input records
+    this.pipeInput("sensor-1-1", Instant.ofEpochSecond(0), 100.0);
+    this.pipeInput("sensor-2-1-1", Instant.ofEpochSecond(0), 10.0);
+    this.pipeInput("sensor-2-2-1", Instant.ofEpochSecond(0), 20.0);
+    this.pipeInput("sensor-1-2", Instant.ofEpochSecond(0), 200.0);
+    this.pipeInput("sensor-2-1-2", Instant.ofEpochSecond(1), 1.0);
+    this.pipeInput("sensor-2-2-2", Instant.ofEpochSecond(1), 2.0);
+
+    // Advance time to obtain outputs
+    this.pipeInput("sensor-1-1", Instant.ofEpochSecond(2), 999.0);
+
+    // Check aggregation results
+    Assert.assertEquals(5, this.outputTopic.getQueueSize());
+
+    final AggregatedActivePowerRecord rootResult = this.outputTopic.readValue();
+    Assert.assertEquals("root", rootResult.getIdentifier());
+    Assert.assertEquals(2, rootResult.getCount());
+    Assert.assertEquals(333.0, rootResult.getSumInW(), 0.1);
+
+    final AggregatedActivePowerRecord sensor1Result = this.outputTopic.readValue();
+    Assert.assertEquals("sensor-1", sensor1Result.getIdentifier());
+    Assert.assertEquals(2, sensor1Result.getCount());
+    Assert.assertEquals(300.0, sensor1Result.getSumInW(), 0.1);
+
+    final AggregatedActivePowerRecord sensor2Result = this.outputTopic.readValue();
+    Assert.assertEquals("sensor-2", sensor2Result.getIdentifier());
+    Assert.assertEquals(2, sensor2Result.getCount());
+    Assert.assertEquals(33.0, sensor2Result.getSumInW(), 0.1);
+
+    final AggregatedActivePowerRecord sensor21Result = this.outputTopic.readValue();
+    Assert.assertEquals("sensor-2-1", sensor21Result.getIdentifier());
+    Assert.assertEquals(2, sensor21Result.getCount());
+    Assert.assertEquals(11.0, sensor21Result.getSumInW(), 0.1);
+
+    final AggregatedActivePowerRecord sensor22Result = this.outputTopic.readValue();
+    Assert.assertEquals("sensor-2-2", sensor22Result.getIdentifier());
+    Assert.assertEquals(2, sensor22Result.getCount());
+    Assert.assertEquals(22.0, sensor22Result.getSumInW(), 0.1);
   }
 
   private void pipeInput(final String identifier, final Instant timestamp, final double value) {
