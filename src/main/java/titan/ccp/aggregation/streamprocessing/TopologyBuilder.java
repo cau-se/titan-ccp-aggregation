@@ -32,7 +32,7 @@ public class TopologyBuilder {
   private final String feedbackTopic;
   private final String outputTopic;
   private final String configurationTopic;
-  private final Duration windowSize;
+  private final Duration emitPeriod;
   private final Duration gracePeriod;
 
   private final StreamsBuilder builder = new StreamsBuilder();
@@ -48,13 +48,13 @@ public class TopologyBuilder {
    */
   public TopologyBuilder(final Serdes serdes, final String inputTopic,
       final String configurationTopic, final String feedbackTopic, final String outputTopic,
-      final Duration windowSize, final Duration gracePeriod) {
+      final Duration emitPeriod, final Duration gracePeriod) {
     this.serdes = serdes;
     this.inputTopic = inputTopic;
     this.configurationTopic = configurationTopic;
     this.feedbackTopic = feedbackTopic;
     this.outputTopic = outputTopic;
-    this.windowSize = windowSize;
+    this.emitPeriod = emitPeriod;
     this.gracePeriod = gracePeriod;
   }
 
@@ -148,7 +148,7 @@ public class TopologyBuilder {
         .groupByKey(Grouped.with(
             SensorParentKeySerde.serde(),
             this.serdes.activePowerRecordValues()))
-        .windowedBy(TimeWindows.of(this.windowSize).grace(this.gracePeriod))
+        .windowedBy(TimeWindows.of(this.emitPeriod).grace(this.gracePeriod))
         .reduce(
             // TODO Configurable window aggregation function
             (oldVal, newVal) -> newVal.getTimestamp() >= oldVal.getTimestamp() ? newVal : oldVal,
@@ -166,7 +166,7 @@ public class TopologyBuilder {
             Grouped.with(
                 new WindowedSerdes.TimeWindowedSerde<>(
                     this.serdes.string(),
-                    this.windowSize.toMillis()),
+                    this.emitPeriod.toMillis()),
                 this.serdes.activePowerRecordValues()))
         .aggregate(
             () -> null,
@@ -175,7 +175,7 @@ public class TopologyBuilder {
             Materialized.with(
                 new WindowedSerdes.TimeWindowedSerde<>(
                     this.serdes.string(),
-                    this.windowSize.toMillis()),
+                    this.emitPeriod.toMillis()),
                 this.serdes.aggregatedActivePowerRecordValues()))
         // TODO timestamp -1 indicates that this record is emitted by an substract event
         .filter((k, record) -> record.getTimestamp() != -1);
@@ -199,7 +199,7 @@ public class TopologyBuilder {
 
     aggregations
         // .suppress(Suppressed.untilWindowCloses(BufferConfig.unbounded()))
-        .suppress(Suppressed.untilTimeLimit(this.windowSize, BufferConfig.unbounded()))
+        .suppress(Suppressed.untilTimeLimit(this.emitPeriod, BufferConfig.unbounded()))
         .toStream()
         .selectKey((k, v) -> k.key())
         .to(this.outputTopic, Produced.with(

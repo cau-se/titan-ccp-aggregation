@@ -15,7 +15,7 @@ public final class ConfigurationKeys {
 
   public static final String KAFKA_OUTPUT_TOPIC = "kafka.output.topic";
 
-  public static final String WINDOW_SIZE_MS = "window.size.ms";
+  public static final String EMIT_PERIOD_MS = "emit.period.ms";
 
   public static final String WINDOW_GRACE_MS = "window.grace.ms";
 

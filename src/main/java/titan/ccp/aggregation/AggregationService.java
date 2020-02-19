@@ -61,7 +61,7 @@ public class AggregationService {
         .feedbackTopic(feedbackTopic)
         .outputTopic(outputTopic)
         .schemaRegistry(this.config.getString(ConfigurationKeys.SCHEMA_REGISTRY_URL))
-        .windowSize(Duration.ofMillis(this.config.getLong(ConfigurationKeys.WINDOW_SIZE_MS)))
+        .windowSize(Duration.ofMillis(this.config.getLong(ConfigurationKeys.EMIT_PERIOD_MS)))
         .gracePeriod(Duration.ofMillis(this.config.getLong(ConfigurationKeys.WINDOW_GRACE_MS)))
         .numThreads(this.config.getInt(ConfigurationKeys.NUM_THREADS))
         .commitIntervalMs(this.config.getInt(ConfigurationKeys.COMMIT_INTERVAL_MS))
