@@ -17,7 +17,7 @@ public final class ConfigurationKeys {
 
   public static final String EMIT_PERIOD_MS = "emit.period.ms";
 
-  public static final String WINDOW_GRACE_MS = "window.grace.ms";
+  public static final String WINDOW_GRACE_MS = "grace.period.ms";
 
   public static final String NUM_THREADS = "num.threads";
 
