@@ -153,7 +153,7 @@ public class TopologyBuilder {
         .windowedBy(TimeWindows.of(this.windowSize).grace(this.gracePeriod))
         .reduce(
             // TODO Configurable window aggregation function
-            (aggValue, newValue) -> newValue,
+            (oldVal, newVal) -> newVal.getTimestamp() >= oldVal.getTimestamp() ? newVal : oldVal,
             Materialized.with(
                 SensorParentKeySerde.serde(),
                 this.serdes.activePowerRecordValues()));
