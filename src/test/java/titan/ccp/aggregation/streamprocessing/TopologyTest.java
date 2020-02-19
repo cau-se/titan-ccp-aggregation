@@ -111,7 +111,34 @@ public class TopologyTest {
     Assert.assertEquals("root", result.getIdentifier());
     Assert.assertEquals(2, result.getCount());
     Assert.assertEquals(200.0, result.getSumInW(), 0.1);
+  }
 
+  @Test
+  public void shouldOnlyConsiderLatestValue() {
+    // Publish sensor registry
+    final MutableSensorRegistry registry = new MutableSensorRegistry("root");
+    final MutableAggregatedSensor root = registry.getTopLevelSensor();
+    root.addChildMachineSensor("child1");
+    root.addChildMachineSensor("child2");
+    this.configurationTopic.pipeInput(
+        Event.SENSOR_REGISTRY_CHANGED,
+        registry.toJson(),
+        Instant.ofEpochSecond(0));
+
+    // Publish input records
+    this.pipeInput("child1", Instant.ofEpochMilli(500), 50.0);
+    this.pipeInput("child2", Instant.ofEpochMilli(1000), 100.0);
+    this.pipeInput("child1", Instant.ofEpochMilli(1500), 400.0);
+
+    // Advance time to obtain outputs
+    this.pipeInput("child2", Instant.ofEpochSecond(3), 123.0);
+
+    // Check aggregation results
+    Assert.assertEquals(1, this.outputTopic.getQueueSize());
+    final AggregatedActivePowerRecord result = this.outputTopic.readValue();
+    Assert.assertEquals("root", result.getIdentifier());
+    Assert.assertEquals(2, result.getCount());
+    Assert.assertEquals(500.0, result.getSumInW(), 0.1);
   }
 
   @Test
@@ -217,6 +244,8 @@ public class TopologyTest {
     Assert.assertEquals(2, sensor22Result.getCount());
     Assert.assertEquals(22.0, sensor22Result.getSumInW(), 0.1);
   }
+
+
 
   private void pipeInput(final String identifier, final Instant timestamp, final double value) {
     this.inputTopic.pipeInput(
