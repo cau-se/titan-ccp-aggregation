@@ -142,6 +142,90 @@ public class TopologyTest {
   }
 
   @Test
+  public void shouldHandleUpdateDuringGracePeriod() {
+    // Publish sensor registry
+    final MutableSensorRegistry registry = new MutableSensorRegistry("root");
+    final MutableAggregatedSensor root = registry.getTopLevelSensor();
+    root.addChildMachineSensor("child1");
+    root.addChildMachineSensor("child2");
+    this.configurationTopic.pipeInput(
+        Event.SENSOR_REGISTRY_CHANGED,
+        registry.toJson(),
+        Instant.ofEpochSecond(0));
+
+    // Publish input records
+    this.pipeInput("child1", Instant.ofEpochMilli(500), 50.0);
+    this.pipeInput("child2", Instant.ofEpochMilli(1000), 100.0);
+    // Advance time to obtain outputs
+    this.pipeInput("child2", Instant.ofEpochSecond(3), 123.0);
+    // This record arrives out-of-order but withing the grace period
+    this.pipeInput("child1", Instant.ofEpochMilli(1500), 400.0);
+    // Advance time to obtain outputs
+    this.pipeInput("child2", Instant.ofEpochSecond(5), 123.0);
+
+    // Check aggregation results
+    Assert.assertEquals(3, this.outputTopic.getQueueSize());
+
+    final AggregatedActivePowerRecord firstResult = this.outputTopic.readValue();
+    Assert.assertEquals("root", firstResult.getIdentifier());
+    Assert.assertEquals(2, firstResult.getCount());
+    Assert.assertEquals(150.0, firstResult.getSumInW(), 0.1);
+
+    final AggregatedActivePowerRecord secondResult = this.outputTopic.readValue();
+    Assert.assertEquals("root", secondResult.getIdentifier());
+    Assert.assertEquals(2, secondResult.getCount());
+    Assert.assertEquals(500.0, secondResult.getSumInW(), 0.1);
+
+    final AggregatedActivePowerRecord thirdResult = this.outputTopic.readValue();
+    Assert.assertEquals("root", thirdResult.getIdentifier());
+    Assert.assertEquals(1, thirdResult.getCount());
+    Assert.assertEquals(123.0, thirdResult.getSumInW(), 0.1);
+  }
+
+  @Test
+  public void shouldNotHandleUpdateAfterGracePeriod() {
+    // Publish sensor registry
+    final MutableSensorRegistry registry = new MutableSensorRegistry("root");
+    final MutableAggregatedSensor root = registry.getTopLevelSensor();
+    root.addChildMachineSensor("child1");
+    root.addChildMachineSensor("child2");
+    this.configurationTopic.pipeInput(
+        Event.SENSOR_REGISTRY_CHANGED,
+        registry.toJson(),
+        Instant.ofEpochSecond(0));
+
+    // Publish input records
+    this.pipeInput("child1", Instant.ofEpochMilli(500), 50.0);
+    this.pipeInput("child2", Instant.ofEpochMilli(1000), 100.0);
+    // Advance time to obtain outputs
+    this.pipeInput("child2", Instant.ofEpochSecond(3), 123.0);
+    // Advance time to obtain outputs
+    this.pipeInput("child2", Instant.ofEpochSecond(5), 123.0);
+    // This record arrives out-of-order and after the grace period has expired
+    this.pipeInput("child1", Instant.ofEpochMilli(1500), 400.0);
+    // Advance time to obtain outputs
+    this.pipeInput("child2", Instant.ofEpochSecond(7), 123.0);
+
+    // Check aggregation results
+    Assert.assertEquals(3, this.outputTopic.getQueueSize());
+
+    final AggregatedActivePowerRecord firstResult = this.outputTopic.readValue();
+    Assert.assertEquals("root", firstResult.getIdentifier());
+    Assert.assertEquals(2, firstResult.getCount());
+    Assert.assertEquals(150.0, firstResult.getSumInW(), 0.1);
+
+    final AggregatedActivePowerRecord secondResult = this.outputTopic.readValue();
+    Assert.assertEquals("root", secondResult.getIdentifier());
+    Assert.assertEquals(1, secondResult.getCount());
+    Assert.assertEquals(123.0, secondResult.getSumInW(), 0.1);
+
+    final AggregatedActivePowerRecord thirdResult = this.outputTopic.readValue();
+    Assert.assertEquals("root", thirdResult.getIdentifier());
+    Assert.assertEquals(1, thirdResult.getCount());
+    Assert.assertEquals(123.0, thirdResult.getSumInW(), 0.1);
+  }
+
+  @Test
   public void testTwoLevelRegistry() {
     // Publish sensor registry
     final MutableSensorRegistry registry = new MutableSensorRegistry("root");
