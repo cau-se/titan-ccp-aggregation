@@ -22,7 +22,7 @@ public class RecordAggregator {
         : Math.max(aggregated.getTimestamp(), record.getTimestamp());
     return new AggregatedActivePowerRecord(
         identifier.key(), timestamp,
-        0.0, 0.0, count, sum, average);
+        count, sum, average);
   }
 
   /**
@@ -36,7 +36,7 @@ public class RecordAggregator {
     return new AggregatedActivePowerRecord(
         // TODO timestamp -1 indicates that this record is emitted by an substract event
         identifier.key(), -1L,
-        0.0, 0.0, count, sum, average);
+        count, sum, average);
   }
 
 }
