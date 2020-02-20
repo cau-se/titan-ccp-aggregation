@@ -1,5 +1,6 @@
 package titan.ccp.aggregation.streamprocessing;
 
+import java.time.Duration;
 import java.util.Objects;
 import java.util.Properties;
 import org.apache.kafka.streams.KafkaStreams;
@@ -11,16 +12,19 @@ import titan.ccp.common.kafka.streams.PropertiesBuilder;
 /**
  * Builder for the Kafka Streams configuration.
  */
-public class KafkaStreamsBuilder {
+public class KafkaStreamsBuilder { // NOPMD builder methods
 
   private static final Logger LOGGER = LoggerFactory.getLogger(KafkaStreamsBuilder.class);
 
   private String applicationName; // NOPMD
   private String bootstrapServers; // NOPMD
   private String inputTopic; // NOPMD
+  private String configurationTopic; // NOPMD
+  private String feedbackTopic; // NOPMD
   private String outputTopic; // NOPMD
   private String schemaRegistryUrl; // NOPMD
-  private String configurationTopic; // NOPMD
+  private Duration emitPeriod; // NOPMD
+  private Duration gracePeriod; // NOPMD
   private int numThreads = -1; // NOPMD
   private int commitIntervalMs = -1; // NOPMD
   private int cacheMaxBytesBuff = -1; // NOPMD
@@ -35,13 +39,28 @@ public class KafkaStreamsBuilder {
     return this;
   }
 
+  public KafkaStreamsBuilder configurationTopic(final String configurationTopic) {
+    this.configurationTopic = configurationTopic;
+    return this;
+  }
+
+  public KafkaStreamsBuilder feedbackTopic(final String feedbackTopic) {
+    this.feedbackTopic = feedbackTopic;
+    return this;
+  }
+
   public KafkaStreamsBuilder outputTopic(final String outputTopic) {
     this.outputTopic = outputTopic;
     return this;
   }
 
-  public KafkaStreamsBuilder configurationTopic(final String configurationTopic) {
-    this.configurationTopic = configurationTopic;
+  public KafkaStreamsBuilder windowSize(final Duration windowSize) {
+    this.emitPeriod = Objects.requireNonNull(windowSize);
+    return this;
+  }
+
+  public KafkaStreamsBuilder gracePeriod(final Duration gracePeriod) {
+    this.gracePeriod = Objects.requireNonNull(gracePeriod);
     return this;
   }
 
@@ -100,16 +119,26 @@ public class KafkaStreamsBuilder {
     Objects.requireNonNull(this.inputTopic, "Input topic has not been set.");
     Objects.requireNonNull(this.outputTopic, "Output topic has not been set.");
     Objects.requireNonNull(this.configurationTopic, "Configuration topic has not been set.");
-    Objects.requireNonNull(this.schemaRegistryUrl, "Schema registry has not been set."); //TODO log
+    Objects.requireNonNull(this.schemaRegistryUrl, "Schema registry has not been set.");
+    Objects.requireNonNull(this.emitPeriod, "Emit period has not been set.");
+    Objects.requireNonNull(this.gracePeriod, "Grace period has not been set.");
     LOGGER.info(
-        "Build Kafka Streams aggregation topology with topics: input='{}', output='{}', 'configuration='{}'", // NOCS
-        this.inputTopic, this.outputTopic, this.configurationTopic);
+        "Build Kafka Streams aggregation topology with topics: input='{}', 'configuration='{}', feedback='{}', output='{}'", // NOCS
+        this.inputTopic, this.configurationTopic, this.feedbackTopic, this.outputTopic);
+    LOGGER.info("Use Schema Registry at '{}'", this.schemaRegistryUrl);
+    LOGGER.info(
+        "Configure aggregation topologie with window parameters: windowSize='{}', gracePeriod='{}'",
+        this.emitPeriod, this.gracePeriod);
 
     final TopologyBuilder topologyBuilder = new TopologyBuilder(
         new Serdes(this.schemaRegistryUrl),
         this.inputTopic,
+        this.configurationTopic,
+        this.feedbackTopic,
         this.outputTopic,
-        this.configurationTopic);
+        this.emitPeriod,
+        this.gracePeriod);
+
     // Non-null checks are performed by PropertiesBuilder
     final Properties properties = PropertiesBuilder
         .bootstrapServers(this.bootstrapServers)

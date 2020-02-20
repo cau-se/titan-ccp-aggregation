@@ -1,11 +1,25 @@
-# Titan CCP - Aggregation
+# Titan Control Center - Aggregation
 
-The [Titan Control Center Prototype](https://ieeexplore.ieee.org/abstract/document/8822045)
-(CCP) is a scalable monitoring infrastructure for [Industrial DevOps](https://industrial-devops.org/).
+The [Titan Control Center](https://ieeexplore.ieee.org/abstract/document/8822045)
+is a scalable monitoring infrastructure for [Industrial DevOps](https://industrial-devops.org/).
 It allows to monitor, analyze and visualize the electrical power consumption of
-devices and machines in production environments such as factories.
+devices and machines in industrial production environments.
 
-This repository contains the **Aggregation** microservice of the Titan CCP.
+This repository contains the **Aggregation** microservice of the Titan Control Center.
+
+## Configuration
+
+This microservice can be configured via environment variables or a Java `application.properties`
+file. Most variables are self explaining.
+
+* `EMIT_PERIOD_MS` determines the frequency aggregation results are generated with.
+It has to be set at least as large as the period sensors are generating
+measurements with. If a sensor is generating no measurement withing an emit
+period, the corresponding aggregation result would not contain a value from the
+corresponding sensor and, thus, would be lower than it should be normally.
+* `GRACE_PERIOD_MS` dertermines for long late arriving measurements are considered
+and, thus, for how long they would cause corrective aggregation results.
+
 
 ## Build and Run
 
