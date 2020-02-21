@@ -190,7 +190,8 @@ public class TopologyBuilder {
         .filter((k, record) -> record != null)
         .selectKey((k, v) -> k.key())
         .to(this.feedbackTopic, Produced.with(
-            this.serdes.string(), this.serdes.aggregatedActivePowerRecordValues()));
+            this.serdes.string(),
+            this.serdes.aggregatedActivePowerRecordValues()));
   }
 
   private void exposeOutputStream(
@@ -200,6 +201,7 @@ public class TopologyBuilder {
         // .suppress(Suppressed.untilWindowCloses(BufferConfig.unbounded()))
         .suppress(Suppressed.untilTimeLimit(this.emitPeriod, BufferConfig.unbounded()))
         .toStream()
+        .filter((k, record) -> record != null)
         .selectKey((k, v) -> k.key())
         .to(this.outputTopic, Produced.with(
             this.serdes.string(),
