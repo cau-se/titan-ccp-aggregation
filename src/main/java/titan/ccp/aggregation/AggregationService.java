@@ -9,7 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import titan.ccp.aggregation.streamprocessing.KafkaStreamsBuilder;
 import titan.ccp.aggregation.streamprocessing.TopologyBuilder;
-import titan.ccp.common.configuration.Configurations;
+import titan.ccp.common.configuration.ServiceConfigurations;
 import titan.ccp.common.kafka.utils.AdminUtils;
 
 /**
@@ -24,7 +24,7 @@ public class AggregationService {
   private static final String NAME = "titan-ccp-aggregation";
   private static final String VERSION = "0.0.3";
 
-  private final Configuration config = Configurations.create();
+  private final Configuration config = ServiceConfigurations.createWithDefaults();
   private final CompletableFuture<Void> stopEvent = new CompletableFuture<>();
 
   /**
