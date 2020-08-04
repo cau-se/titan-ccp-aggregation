@@ -117,15 +117,9 @@ public class TopologyBuilder {
         .filter((key, value) -> key == Event.SENSOR_REGISTRY_CHANGED
             || key == Event.SENSOR_REGISTRY_STATUS);
 
-    final ChildParentsTransformerFactory childParentsTransformerFactory =
-        new ChildParentsTransformerFactory();
-    this.builder.addStateStore(childParentsTransformerFactory.getStoreBuilder());
-
     return configurationStream
         .mapValues(data -> SensorRegistry.fromJson(data))
-        .flatTransform(
-            childParentsTransformerFactory.getTransformerSupplier(),
-            childParentsTransformerFactory.getStoreName())
+        .flatTransform(new ChildParentsTransformerSupplier())
         .groupByKey(Grouped.with(this.serdes.string(), OptionalParentsSerde.serde()))
         .aggregate(
             () -> Set.<String>of(),
@@ -136,16 +130,11 @@ public class TopologyBuilder {
   private KTable<Windowed<SensorParentKey>, ActivePowerRecord> buildLastValueTable(
       final KTable<String, Set<String>> parentSensorTable,
       final KTable<String, ActivePowerRecord> inputTable) {
-    final JointFlatTransformerFactory jointFlatMapTransformerFactory =
-        new JointFlatTransformerFactory();
-    this.builder.addStateStore(jointFlatMapTransformerFactory.getStoreBuilder());
 
     return inputTable
         .join(parentSensorTable, (record, parents) -> new JointRecordParents(parents, record))
         .toStream()
-        .flatTransform(
-            jointFlatMapTransformerFactory.getTransformerSupplier(),
-            jointFlatMapTransformerFactory.getStoreName())
+        .flatTransform(new JointFlatTransformerSupplier())
         .groupByKey(Grouped.with(
             SensorParentKeySerde.serde(),
             this.serdes.activePowerRecordValues()))
