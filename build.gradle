@@ -47,7 +47,10 @@ dependencies {
   testImplementation 'junit:junit:4.12'
   testImplementation 'com.github.stefanbirkner:system-rules:1.17.0'
   testImplementation 'org.apache.kafka:kafka-streams-test-utils:2.6.0'
-  testImplementation 'io.confluent:kafka-streams-avro-serde:5.5.1'
+  testImplementation('io.confluent:kafka-streams-avro-serde:5.5.1')  {
+      // exclude, because introduces older version with higher number 5.5.1-ccs
+      exclude group: 'org.apache.kafka', module: 'kafka-clients'
+    }
 }
 
 mainClassName = "titan.ccp.aggregation.AggregationService"
