@@ -53,7 +53,20 @@ dependencies {
     }
 }
 
-mainClassName = "titan.ccp.aggregation.AggregationService"
+mainClassName = mainClass
+
+distTar {
+  archiveFileName = rootProject.name + '.tar'
+}
+
+// Replace values in the application.properties file
+import org.apache.tools.ant.filters.*
+processResources {
+    filter ReplaceTokens, tokens: [
+        "application.name": rootProject.name,
+        "application.version": version
+    ]
+}
 
 pmd {
   ruleSets = [] // Gradle requires to clean the rule sets first
