@@ -21,9 +21,6 @@ public class AggregationService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TopologyBuilder.class);
 
-  private static final String NAME = "titan-ccp-aggregation";
-  private static final String VERSION = "0.0.3";
-
   private final Configuration config = ServiceConfigurations.createWithDefaults();
   private final CompletableFuture<Void> stopEvent = new CompletableFuture<>();
 
@@ -53,8 +50,16 @@ public class AggregationService {
     final String feedbackTopic = this.config.getString(ConfigurationKeys.KAFKA_FEEDBACK_TOPIC);
     final String outputTopic = this.config.getString(ConfigurationKeys.KAFKA_OUTPUT_TOPIC);
 
+    // Get right application name and version
+    String applicationName = this.config.getString(ConfigurationKeys.APPLICATION_NAME);
+    String applicationVersion = this.config.getString(ConfigurationKeys.APPLICATION_VERSION);
+    applicationName =
+        "@application.name@".equals(applicationName) ? "titan-ccp-aggregation" : applicationName;
+    applicationVersion =
+        "@application.version@".equals(applicationVersion) ? "dev" : applicationVersion;
+
     final KafkaStreams kafkaStreams = new KafkaStreamsBuilder()
-        .applicationName(NAME + '-' + VERSION)
+        .applicationName(applicationName + '-' + applicationVersion)
         .bootstrapServers(this.config.getString(ConfigurationKeys.KAFKA_BOOTSTRAP_SERVERS))
         .inputTopic(inputTopic)
         .configurationTopic(configTopic)
